@@ -188,7 +188,7 @@ macro_rules! impl_pair_map {
                 match_possible_variants!(self, $has_e, false, $has_b, {
                     @either => $name::Left(a) => $name::Left(f(a)),
                     @either => $name::Right(b) => $name::Right(g(b)),
-                    @neither => $name::Neither => $name::Neither,
+                    @neither => $name::Neither => unreachable!(),
                     @both => $name::Both(a, b) => $name::Both(f(a), g(b)),
                 })
             }
@@ -197,12 +197,8 @@ macro_rules! impl_pair_map {
     ($($_:tt),*) => {};
 }
 
-#[inline(never)]
-pub fn right(e: EitherOrNeitherOrBoth<i32, i32>) -> Option<i32> {
-    foo(e.right())
-}
+impl_pair_map!(EitherOrBoth, true, false, true);
 
-#[inline(never)]
-pub fn left(e: EitherOrNeitherOrBoth<i32, i32>) -> Option<i32> {
-    foo(e.left())
+pub fn hoge(e: EitherOrBoth<i32, i32>) -> EitherOrBoth<i64, i64> {
+    e.map_either(|a| a as i64, |b| b as i64)
 }
