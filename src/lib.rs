@@ -86,39 +86,32 @@ impl<A, B> EitherOrNeitherOrBoth<A, B> {
     pub fn is_both(&self) -> bool {
         matches!(self, EitherOrNeitherOrBoth::Both(_, _))
     }
+    pub fn right(self) -> Option<B> {
+        match self {
+            Self::Right(b) | Self::Both(_, b) => Some(b),
+            _ => None,
+        }
+    }
+
+    pub fn left(self) -> Option<A> {
+        match self {
+            Self::Left(a) | Self::Both(a, _) => Some(a),
+            _ => None,
+        }
+    }
 }
 
 #[inline(never)]
-pub fn debug_is_left(e: Either<i32, i32>) -> bool {
-    e.is_left()
+fn foo(x: Option<i32>) -> Option<i32> {
+    x
 }
 
 #[inline(never)]
-pub fn debug_is_left2(e: Either<i32, i32>) -> bool {
-    e.is_left2()
+pub fn right(e: EitherOrNeitherOrBoth<i32, i32>) -> Option<i32> {
+    foo(e.right())
 }
 
 #[inline(never)]
-pub fn debug_is_left3(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
-    e.is_left()
-}
-
-#[inline(never)]
-pub fn debug_is_right(e: Either<i32, i32>) -> bool {
-    e.is_right()
-}
-
-#[inline(never)]
-pub fn debug_is_neither(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
-    e.is_neither()
-}
-
-#[inline(never)]
-pub fn debug_is_both(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
-    e.is_both()
-}
-
-#[inline(never)]
-pub fn is_zero(x: i32) -> bool {
-    x == 0
+pub fn left(e: EitherOrNeitherOrBoth<i32, i32>) -> Option<i32> {
+    foo(e.left())
 }
