@@ -90,56 +90,39 @@ macro_rules! categorize_arms {
     // @either arms
     ($callback:ident, { $($cb_args:tt)* },
         { @either => $pat:pat => $block:block $($rest:tt)* },
-        { $($e_pat:pat => $e_block:block)* },
-        { $($n_pat:pat => $n_block:block)* },
-        { $($b_pat:pat => $b_block:block)* }
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
-            { $($e_pat => $e_block)* $pat => $block },
-            { $($n_pat => $n_block)* },
-            { $($b_pat => $b_block)* }
+            { $($e_arms)* $pat => $block }, { $($n_arms)* }, { $($b_arms)* }
         )
     };
 
     // @neither arms
     ($callback:ident, { $($cb_args:tt)* },
         { @neither => $pat:pat => $block:block $($rest:tt)* },
-        { $($e_pat:pat => $e_block:block)* },
-        { $($n_pat:pat => $n_block:block)* },
-        { $($b_pat:pat => $b_block:block)* }
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
-            { $($e_pat => $e_block)* },
-            { $($n_pat => $n_block)* $pat => $block },
-            { $($b_pat => $b_block)* }
+            { $($e_arms)* }, { $($n_arms)* $pat => $block }, { $($b_arms)* }
         )
     };
 
     // @both arms
     ($callback:ident, { $($cb_args:tt)* },
         { @both => $pat:pat => $block:block $($rest:tt)* },
-        { $($e_pat:pat => $e_block:block)* },
-        { $($n_pat:pat => $n_block:block)* },
-        { $($b_pat:pat => $b_block:block)* }
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
-            { $($e_pat => $e_block)* },
-            { $($n_pat => $n_block)* },
-            { $($b_pat => $b_block)* $pat => $block }
+            { $($e_arms)* }, { $($n_arms)* }, { $($b_arms)* $pat => $block }
         )
     };
 
     // Terminal case
-    ($callback:ident, { $($cb_args:tt)* }, { /* empty */ },
-        { $($e_pat:pat => $e_block:block)* },
-        { $($n_pat:pat => $n_block:block)* },
-        { $($b_pat:pat => $b_block:block)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { /* empty */ },
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
-        $callback!($($cb_args)*,
-            { $($e_pat => $e_block)* },
-            { $($n_pat => $n_block)* },
-            { $($b_pat => $b_block)* }
-        )
+        $callback!($($cb_args)*, { $($e_arms)* }, { $($n_arms)* }, { $($b_arms)* })
     };
 }
 
@@ -153,7 +136,8 @@ macro_rules! match_possible_variants {
             { $($arms)* }, {}
         )
     };
-    (@categorized $expr:expr, true, true, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, true, true, true,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($e_arms)*
@@ -161,41 +145,47 @@ macro_rules! match_possible_variants {
             $($b_arms)*
         }
     };
-    (@categorized $expr:expr, true, true, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, true, true, false,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($e_arms)*
             $($n_arms)*
         }
     };
-    (@categorized $expr:expr, true, false, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, true, false, true,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($e_arms)*
             $($b_arms)*
         }
     };
-    (@categorized $expr:expr, true, false, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, true, false, false,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($e_arms)*
             $($n_arms)*
         }
     };
-    (@categorized $expr:expr, false, true, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, false, true, true,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($n_arms)*
             $($b_arms)*
         }
     };
-    (@categorized $expr:expr, false, true, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, false, true, false,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($n_arms)*
         }
     };
-    (@categorized $expr:expr, false, false, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
+    (@categorized $expr:expr, false, false, true,
+        { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }
     ) => {
         match $expr {
             $($b_arms)*
