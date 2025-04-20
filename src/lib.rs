@@ -45,166 +45,80 @@ pub enum EitherOrNeitherOrBoth<A, B> {
     Both(A, B),
 }
 
-macro_rules! filter_arms {
-    // @either arms
-    (@either,
-        { 'either => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@either, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
-    };
-    (@either,
-        { 'either => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@either, { $($rest)* }, { $($generated)*, ($pat, $block) })
-    };
-    (@either,
-        { 'either => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@either, { $($($rest)*)* }, { $($generated)*, ($pat, {$expr}) })
-    };
+impl<A, B> Either<A, B> {
+    pub fn is_left(&self) -> bool {
+        matches!(self, Either::Left(_))
+    }
 
-    // @neither arms
-    (@neither,
-        { 'neither => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@neither, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
-    };
-    (@neither,
-        { 'neither => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, $block) })
-    };
-    (@neither,
-        { 'neither => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
-    };
+    pub fn is_right(&self) -> bool {
+        matches!(self, Either::Right(_))
+    }
 
-    // @both arms
-    (@both,
-        { 'both => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@both, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
-    };
-    (@both,
-        { 'both => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, $block) })
-    };
-    (@both,
-        { 'both => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
-    };
+    fn into_enb(self) -> EitherOrNeitherOrBoth<A, B> {
+        match self {
+            Either::Left(a) => EitherOrNeitherOrBoth::Left(a),
+            Either::Right(b) => EitherOrNeitherOrBoth::Right(b),
+        }
+    }
 
-    // Terminal case
-    (@$filter:ident, { /* empty */ }, { $($generated:tt)* }) => {
-        $($generated)*
-    };
+    pub fn as_ref(&self) -> Either<&A, &B> {
+        match self {
+            Either::Left(a) => Either::Left(a),
+            Either::Right(b) => Either::Right(b),
+        }
+    }
 
-    // Skip these arms
-    (@$filter:ident,
-        { $label:lifetime => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@$filter, { $($rest)* }, { $($generated)* })
-    };
-    (@$filter:ident,
-        { $label:lifetime => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@$filter, { $($rest)* }, { $($generated)* })
-    };
+    pub fn is_left2(&self) -> bool {
+        self.as_ref().into_enb().is_left()
+    }
 }
 
-/// Main macro to generate match expression with conditional variants
-macro_rules! match_possible_variants {
-    ($expr:expr, $has_e:ident, $has_n:ident, $has_b:ident, {
-        $($arms:tt)*
-    }) => {
-        match_possible_variants!(
-            @filtered $expr,
-            $has_e, $has_n, $has_b,
-            { filter_arms!(@either, { $($arms)* }, {}) },
-            { filter_arms!(@neither, { $($arms)* }, {}) },
-            { filter_arms!(@both, { $($arms)* }, {}) }
-        )
-    };
-    (@filtered $expr:expr, true, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($e_pat => $e_block)*
-            $($n_pat => $n_block)*
-            $($b_pat => $b_block)*
-        }
-    };
-    (@filtered $expr:expr, true, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($e_pat => $e_block)*
-            $($n_pat => $n_block)*
-        }
-    };
-    (@filtered $expr:expr, true, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($e_pat => $e_block)*
-            $($b_pat => $b_block)*
-        }
-    };
-    (@filtered $expr:expr, true, false, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($e_pat => $e_block)*
-            $($n_pat => $n_block)*
-        }
-    };
-    (@filtered $expr:expr, false, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($n_pat => $n_block)*
-            $($b_pat => $b_block)*
-        }
-    };
-    (@filtered $expr:expr, false, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($n_pat => $n_block)*
-        }
-    };
-    (@filtered $expr:expr, false, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
-        match $expr {
-            $($b_pat => $b_block)*
-        }
-    };
+impl<A, B> EitherOrNeitherOrBoth<A, B> {
+    pub fn is_left(&self) -> bool {
+        matches!(self, EitherOrNeitherOrBoth::Left(_))
+    }
+    pub fn is_right(&self) -> bool {
+        matches!(self, EitherOrNeitherOrBoth::Right(_))
+    }
+    pub fn is_neither(&self) -> bool {
+        matches!(self, EitherOrNeitherOrBoth::Neither)
+    }
+    pub fn is_both(&self) -> bool {
+        matches!(self, EitherOrNeitherOrBoth::Both(_, _))
+    }
 }
 
-/// Implements map_either for pair-like types with conditional variants
-macro_rules! impl_pair_map {
-    ($name:ident, $has_e:ident, false, $has_b:ident) => {
-        impl<A, B> $name<A, B> {
-            pub fn map_either<F, G, C, D>(self, f: F, g: G) -> $name<C, D>
-            where
-                F: FnOnce(A) -> C,
-                G: FnOnce(B) -> D,
-            {
-                match_possible_variants!(self, $has_e, false, $has_b, {
-                    'either => Self::Left(a) => Self::Left(f(a)),
-                    'either => Self::Right(b) => Self::Right(g(b)),
-                    'neither => Self::Neither => Self::Neither,
-                    'both => Self::Both(a, b) => Self::Both(f(a), g(b)),
-                })
-            }
-        }
-    };
-    ($($_:tt),*) => {};
+#[inline(never)]
+pub fn debug_is_left(e: Either<i32, i32>) -> bool {
+    e.is_left()
 }
 
-// impl_pair_map!(EitherOrNeitherOrBoth, true, true, true);
-// impl_pair_map!(EitherOrBoth, true, false, true);
-// impl_pair_map!(EitherOrNeither, true, true, false);
-// impl_pair_map!(NeitherOrBoth, false, true, true);
-impl_pair_map!(Both, false, false, true);
+#[inline(never)]
+pub fn debug_is_left2(e: Either<i32, i32>) -> bool {
+    e.is_left2()
+}
+
+#[inline(never)]
+pub fn debug_is_left3(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
+    e.is_left()
+}
+
+#[inline(never)]
+pub fn debug_is_right(e: Either<i32, i32>) -> bool {
+    e.is_right()
+}
+
+#[inline(never)]
+pub fn debug_is_neither(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
+    e.is_neither()
+}
+
+#[inline(never)]
+pub fn debug_is_both(e: EitherOrNeitherOrBoth<i32, i32>) -> bool {
+    e.is_both()
+}
+
+#[inline(never)]
+pub fn is_zero(x: i32) -> bool {
+    x == 0
+}
