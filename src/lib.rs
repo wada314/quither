@@ -45,84 +45,81 @@ pub enum EitherOrNeitherOrBoth<A, B> {
     Both(A, B),
 }
 
-macro_rules! filter_arms {
+macro_rules! categorize_arms {
     // @either arms
-    (@either,
-        { 'either => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @either => $pat:pat => $expr:expr $(,)? },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@either, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { /* empty */ },
+            { $(($e_pat => $e_block),)* ($pat => {$expr}) }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* })
     };
-    (@either,
-        { 'either => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @either => $pat:pat => $block:block $(,)? $($rest:tt)* },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@either, { $($rest)* }, { $($generated)*, ($pat, $block) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block),)* ($pat => $block) }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* })
     };
-    (@either,
-        { 'either => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @either => $pat:pat => $expr:expr, $($rest:tt)* },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@either, { $($($rest)*)* }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block),)* ($pat => {$expr}) }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* })
     };
 
     // @neither arms
-    (@neither,
-        { 'neither => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @neither => $pat:pat => $expr:expr $(,)? },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@neither, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { /* empty */ },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* ($pat => {$expr}) }, { $(($b_pat => $b_block)),* })
     };
-    (@neither,
-        { 'neither => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @neither => $pat:pat => $block:block $(,)? $($rest:tt)* },
+        { $($e_pat:pat, $e_block:block),* }, { $($n_pat:pat, $n_block:block),* }, { $($b_pat:pat, $b_block:block),* }
     ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, $block) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* ($pat => $block) }, { $(($b_pat => $b_block)),* })
     };
-    (@neither,
-        { 'neither => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @neither => $pat:pat => $expr:expr, $($rest:tt)* },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* ($pat => {$expr}) }, { $(($b_pat => $b_block)),* })
     };
 
     // @both arms
-    (@both,
-        { 'both => $pat:pat => $expr:expr $(,)? },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @both => $pat:pat => $expr:expr $(,)? },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@both, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { /* empty */ },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* ($pat => {$expr}) })
     };
-    (@both,
-        { 'both => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @both => $pat:pat => $block:block $(,)? $($rest:tt)* },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, $block) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* ($pat => $block) })
     };
-    (@both,
-        { 'both => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* },
+        { @both => $pat:pat => $expr:expr, $($rest:tt)* },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
+        categorize_arms!($callback, { $($cb_args)* }, { $($rest)* },
+            { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* ($pat => {$expr}) })
     };
 
     // Terminal case
-    (@$filter:ident, { /* empty */ }, { $($generated:tt)* }) => {
-        $($generated)*
-    };
-
-    // Skip these arms
-    (@$filter:ident,
-        { $label:lifetime => $pat:pat => $block:block $(,)? $($rest:tt)* },
-        { $($generated:tt)* }
+    ($callback:ident, { $($cb_args:tt)* }, { /* empty */ },
+        { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }
     ) => {
-        filter_arms!(@$filter, { $($rest)* }, { $($generated)* })
-    };
-    (@$filter:ident,
-        { $label:lifetime => $pat:pat => $expr:expr, $($rest:tt)* },
-        { $($generated:tt)* }
-    ) => {
-        filter_arms!(@$filter, { $($rest)* }, { $($generated)* })
+        $callback!($($cb_args)*, { $(($e_pat => $e_block)),* }, { $(($n_pat => $n_block)),* }, { $(($b_pat => $b_block)),* })
     };
 }
 
@@ -131,51 +128,48 @@ macro_rules! match_possible_variants {
     ($expr:expr, $has_e:ident, $has_n:ident, $has_b:ident, {
         $($arms:tt)*
     }) => {
-        match_possible_variants!(
-            @filtered $expr,
-            $has_e, $has_n, $has_b,
-            { filter_arms!(@either, { $($arms)* }, {}) },
-            { filter_arms!(@neither, { $($arms)* }, {}) },
-            { filter_arms!(@both, { $($arms)* }, {}) }
+        categorize_arms!(
+            match_possible_variants, { @filtered $expr, $has_e, $has_n, $has_b },
+            { $($arms)* }, {}, {}, {}
         )
     };
-    (@filtered $expr:expr, true, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, true, true, true, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($e_pat => $e_block)*
             $($n_pat => $n_block)*
             $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, true, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, true, true, false, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($e_pat => $e_block)*
             $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, true, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, true, false, true, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($e_pat => $e_block)*
             $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, true, false, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, true, false, false, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($e_pat => $e_block)*
             $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, false, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, false, true, true, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($n_pat => $n_block)*
             $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, false, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, false, true, false, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, false, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
+    (@filtered $expr:expr, false, false, true, { $(($e_pat:pat => $e_block:block)),* }, { $(($n_pat:pat => $n_block:block)),* }, { $(($b_pat:pat => $b_block:block)),* }) => {
         match $expr {
             $($b_pat => $b_block)*
         }
@@ -192,10 +186,10 @@ macro_rules! impl_pair_map {
                 G: FnOnce(B) -> D,
             {
                 match_possible_variants!(self, $has_e, false, $has_b, {
-                    'either => Self::Left(a) => Self::Left(f(a)),
-                    'either => Self::Right(b) => Self::Right(g(b)),
-                    'neither => Self::Neither => Self::Neither,
-                    'both => Self::Both(a, b) => Self::Both(f(a), g(b)),
+                    @either => $name::Left(a) => $name::Left(f(a)),
+                    @either => $name::Right(b) => $name::Right(g(b)),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(a, b) => $name::Both(f(a), g(b)),
                 })
             }
         }
