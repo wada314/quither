@@ -17,7 +17,9 @@ pub enum Either<A, B> {
     Right(B),
 }
 
-pub struct Neither<A, B> {}
+pub struct Neither<A, B> {
+    _phantom: ::std::marker::PhantomData<(A, B)>,
+}
 
 pub struct Both<A, B>(A, B);
 
@@ -45,69 +47,101 @@ pub enum EitherOrNeitherOrBoth<A, B> {
     Both(A, B),
 }
 
+/// Helper macro to handle match arms based on variant flags
 macro_rules! match_arm_group {
-    // @either-s
-    (@either, yes, { @either => { $($arms:tt)* } $($rest:tt)* }) => {
-        $($arms)*
+    // Match block-expression for @either variant when enabled
+    (@either, true, @either => $pat:pat => $block:block $($rest:tt)*) => {
+        $pat => $block
+        match_arm_group!(@either, true, $($rest)*)
     };
-    (@either, no, { @either => { $($arms:tt)* } $($rest:tt)* }) => {};
-    (@either, $flag:tt, {}) => {};
-    (@either, $flag:tt, { $other:tt => { $($arms:tt)* } $($rest:tt)* }) => {
-        match_arm_group!(@neither, $flag, { $other => { $($arms)* } $($rest)* })
+    // Match comma-separated expression for @either variant when enabled
+    (@either, true, @either => $pat:pat => $result:expr $(, $($rest:tt)*)*) => {
+        $pat => $result,
+        match_arm_group!(@either, true, $($($rest)*)*)
     };
+    // Skip @either variant when disabled
+    (@either, false, @either => $pat:pat => $block:block $($rest:tt)*) => {
+        match_arm_group!(@either, false, $($rest)*)
+    };
+    (@either, false, @either => $pat:pat => $result:expr $(, $($rest:tt)*)*) => {
+        match_arm_group!(@either, false, $($($rest)*)*)
+    };
+    // Base case: no more patterns to match
+    (@either, $flag:expr, ) => {};
 
-    // @neither-s
-    (@neither, yes, { @neither => { $($arms:tt)* } $($rest:tt)* }) => {
-        $($arms)*
-    };
-    (@neither, no, { @neither => { $($arms:tt)* } $($rest:tt)* }) => {};
-    (@neither, $flag:tt, {}) => {};
-    (@neither, $flag:tt, { $other:tt => { $($arms:tt)* } $($rest:tt)* }) => {
-        match_arm_group!(@both, $flag, { $other => { $($arms)* } $($rest)* })
-    };
+    // // Match block-expression for @neither variant when enabled
+    // (@neither, true, @neither => $pat:pat => $block:block $($rest:tt)*) => {
+    //     $pat => $block
+    //     match_arm_group!(@neither, true, $($rest)*)
+    // };
+    // // Match comma-separated expression for @neither variant when enabled
+    // (@neither, true, @neither => $pat:pat => $result:expr, $($rest:tt)*) => {
+    //     $pat => $result,
+    //     match_arm_group!(@neither, true, $($rest)*)
+    // };
+    // // Skip @neither variant when disabled
+    // (@neither, false, @neither => $pat:pat => $block:block $($rest:tt)*) => {
+    //     match_arm_group!(@neither, false, $($rest)*)
+    // };
+    // (@neither, false, @neither => $pat:pat => $result:expr, $($rest:tt)*) => {
+    //     match_arm_group!(@neither, false, $($rest)*)
+    // };
+    // // Base case: no more patterns to match
+    // (@neither, $flag:expr, ) => {};
 
-    // @both-s
-    (@both, yes, { @both => { $($arms:tt)* } $($rest:tt)* }) => {
-        $($arms)*
-    };
-    (@both, no, { @both => { $($arms:tt)* } $($rest:tt)* }) => {};
-    (@both, $flag:tt, {}) => {};
-    (@both, $flag:tt, { $other:tt => { $($arms:tt)* } $($rest:tt)* }) => {
-        match_arm_group!(@either, $flag, { $other => { $($arms)* } $($rest)* })
-    };
+    // // Match block-expression for @both variant when enabled
+    // (@both, true, @both => $pat:pat => $block:block $($rest:tt)*) => {
+    //     $pat => $block
+    //     match_arm_group!(@both, true, $($rest)*)
+    // };
+    // // Match comma-separated expression for @both variant when enabled
+    // (@both, true, @both => $pat:pat => $result:expr, $($rest:tt)*) => {
+    //     $pat => $result,
+    //     match_arm_group!(@both, true, $($rest)*)
+    // };
+    // // Skip @both variant when disabled
+    // (@both, false, @both => $pat:pat => $block:block $($rest:tt)*) => {
+    //     match_arm_group!(@both, false, $($rest)*)
+    // };
+    // (@both, false, @both => $pat:pat => $result:expr, $($rest:tt)*) => {};
+    // // Base case: no more patterns to match
+    // (@both, $flag:expr, ) => {};
 }
 
+/// Main macro to generate match expression with conditional variants
 macro_rules! match_possible_variants {
-    ($has_e:ident, $has_n:ident, $has_b:ident, match $expr:expr { $($arms:tt)* }) => {
+    ($expr:expr, $has_e:expr, $has_n:expr, $has_b:expr, {
+        $($arms:tt)*
+    }) => {
         match $expr {
-            $( match_arm_group!(@either, $has_e, { $($arms)* }) )*
-            $( match_arm_group!(@neither, $has_n, { $($arms)* }) )*
-            $( match_arm_group!(@both, $has_b, { $($arms)* }) )*
+            match_arm_group!(@either, $has_e, $($arms)*)
+            // match_arm_group!(@neither, $has_n, $($arms)*)
+            // match_arm_group!(@both, $has_b, $($arms)*)
         }
     };
 }
 
+/// Implements map_either for pair-like types with conditional variants
 macro_rules! impl_pair_map {
-    ($name:path, $has_e:ident, no, $has_b:ident) => {
+    ($name:ident, $has_e:expr, false, $has_b:expr) => {
         impl<A, B> $name<A, B> {
             pub fn map_either<F, G, C, D>(self, f: F, g: G) -> $name<C, D>
             where
                 F: FnOnce(A) -> C,
                 G: FnOnce(B) -> D,
             {
-                match_possible_variants!($has_e, no, $has_b, match self {
-                    @either => {
-                        Self::Left(a) => Self::Left(f(a)),
-                        Self::Right(b) => Self::Right(g(b)),
-                    }
-                    @neither => {
-                        Self::Neither => Self::Neither,
-                    }
-                    @both => {
-                        Self::Both(a, b) => Self::Both(f(a), g(b)),
-                    }
+                match_possible_variants!(self, $has_e, false, $has_b, {
+                    @either => Self::Left(a) => Self::Left(f(a)),
+                    // @either => Self::Right(b) => Self::Right(g(b)),
+                    // @neither => Self::Neither => Self::Neither,
+                    // @both => Self::Both(a, b) => Self::Both(f(a), g(b)),
                 })
             }
         }
     };
+    ($($_:tt),*) => {};
 }
+
+impl_pair_map!(EitherOrBoth, true, false, true);
+// impl_pair_map!(EitherOrNeither, true, true, false);
+// impl_pair_map!(NeitherOrBoth, false, true, true);
