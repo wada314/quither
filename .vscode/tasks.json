@@ -8,6 +8,9 @@
             "problemMatcher": [
                 "$rustc"
             ],
+            "env": {
+                "RUSTFLAGS": "-Z macro-backtrace"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",

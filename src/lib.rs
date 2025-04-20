@@ -51,19 +51,19 @@ macro_rules! filter_arms {
         { 'either => $pat:pat => $expr:expr $(,)? },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@either, { /* empty */ }, { $($generated)* $pat => $expr, })
+        filter_arms!(@either, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
     };
     (@either,
         { 'either => $pat:pat => $block:block $(,)? $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@either, { $($rest)* }, { $($generated)* $pat => $block })
+        filter_arms!(@either, { $($rest)* }, { $($generated)*, ($pat, $block) })
     };
     (@either,
         { 'either => $pat:pat => $expr:expr, $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@either, { $($($rest)*)* }, { $($generated)* $pat => $expr, })
+        filter_arms!(@either, { $($($rest)*)* }, { $($generated)*, ($pat, {$expr}) })
     };
 
     // @neither arms
@@ -71,19 +71,19 @@ macro_rules! filter_arms {
         { 'neither => $pat:pat => $expr:expr $(,)? },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@neither, { /* empty */ }, { $($generated)* $pat => $expr, })
+        filter_arms!(@neither, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
     };
     (@neither,
         { 'neither => $pat:pat => $block:block $(,)? $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)* $pat => $block })
+        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, $block) })
     };
     (@neither,
         { 'neither => $pat:pat => $expr:expr, $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@neither, { $($rest)* }, { $($generated)* $pat => $expr, })
+        filter_arms!(@neither, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
     };
 
     // @both arms
@@ -91,19 +91,19 @@ macro_rules! filter_arms {
         { 'both => $pat:pat => $expr:expr $(,)? },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@both, { /* empty */ }, { $($generated)* $pat => $expr, })
+        filter_arms!(@both, { /* empty */ }, { $($generated)*, ($pat, {$expr}) })
     };
     (@both,
         { 'both => $pat:pat => $block:block $(,)? $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)* $pat => $block })
+        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, $block) })
     };
     (@both,
         { 'both => $pat:pat => $expr:expr, $($rest:tt)* },
         { $($generated:tt)* }
     ) => {
-        filter_arms!(@both, { $($rest)* }, { $($generated)* $pat => $expr, })
+        filter_arms!(@both, { $($rest)* }, { $($generated)*, ($pat, {$expr}) })
     };
 
     // Terminal case
@@ -139,44 +139,45 @@ macro_rules! match_possible_variants {
             { filter_arms!(@both, { $($arms)* }, {}) }
         )
     };
-    (@filtered $expr:expr, true, true, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, true, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($e_arms)*
-            $($n_arms)*
-            $($b_arms)*
+            $($e_pat => $e_block)*
+            $($n_pat => $n_block)*
+            $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, true, true, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, true, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($e_arms)*
-            $($n_arms)*
+            $($e_pat => $e_block)*
+            $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, true, false, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, true, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($e_arms)*
-            $($b_arms)*
+            $($e_pat => $e_block)*
+            $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, true, false, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, true, false, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($e_arms)*
+            $($e_pat => $e_block)*
+            $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, false, true, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, false, true, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($n_arms)*
-            $($b_arms)*
+            $($n_pat => $n_block)*
+            $($b_pat => $b_block)*
         }
     };
-    (@filtered $expr:expr, false, true, false, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, false, true, false, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($n_arms)*
+            $($n_pat => $n_block)*
         }
     };
-    (@filtered $expr:expr, false, false, true, { $($e_arms:tt)* }, { $($n_arms:tt)* }, { $($b_arms:tt)* }) => {
+    (@filtered $expr:expr, false, false, true, { $(($e_pat:pat, $e_block:block)),* }, { $(($n_pat:pat, $n_block:block)),* }, { $(($b_pat:pat, $b_block:block)),* }) => {
         match $expr {
-            $($b_arms)*
+            $($b_pat => $b_block)*
         }
     };
 }
