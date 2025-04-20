@@ -17,11 +17,9 @@ pub enum Either<A, B> {
     Right(B),
 }
 
-pub struct Neither<A, B> {
-    _phantom: ::std::marker::PhantomData<(A, B)>,
+pub enum Both<A, B> {
+    Both(A, B),
 }
-
-pub struct Both<A, B>(A, B);
 
 pub enum EitherOrNeither<A, B> {
     Left(A),
