@@ -98,7 +98,14 @@ macro_rules! impl_left_right_getters {
                     @both => $name::Both(l, r) => $name::Both(f(l), r),
                 })
             }
+        }
+    };
+}
 
+macro_rules! impl_left_right_and_or_methods {
+    ($name:ident, false, false, true) => { /* skip for `Both` type. */};
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl<L, R> $name<L, R> {
             /// Apply the function `f` on the value in the left position if it is present,
             /// and then rewrap the result in a same variant of the new type.
             pub fn left_and_then<F, L2>(self, f: F) -> $name<L2, R>
@@ -122,7 +129,6 @@ macro_rules! impl_left_right_getters {
                     @both => $name::Both(l, _) => l,
                 })
             }
-
         }
     };
 }
@@ -149,6 +155,7 @@ macro_rules! impl_pair_map {
 }
 
 apply_impl_to_all_variants!(impl_left_right_getters);
+apply_impl_to_all_variants!(impl_left_right_and_or_methods);
 apply_impl_to_all_variants!(impl_pair_map);
 
 pub fn hoge(e: EitherOrBoth<i32, i32>) -> EitherOrBoth<i64, i64> {
