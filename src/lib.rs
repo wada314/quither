@@ -193,6 +193,17 @@ macro_rules! match_possible_variants {
     };
 }
 
+macro_rules! apply_impl_to_all_variants {
+    ($name:ident) => {
+        $name!(EitherOrNeitherOrBoth, true, true, true);
+        $name!(EitherOrNeither, true, true, false);
+        $name!(EitherOrBoth, true, false, true);
+        $name!(NeitherOrBoth, false, true, true);
+        $name!(Either, true, false, false);
+        $name!(Both, false, false, true);
+    };
+}
+
 /// Implements map_either for pair-like types with conditional variants
 macro_rules! impl_pair_map {
     ($name:ident, $has_e:ident, false, $has_b:ident) => {
@@ -214,7 +225,7 @@ macro_rules! impl_pair_map {
     ($($_:tt),*) => {};
 }
 
-impl_pair_map!(EitherOrBoth, true, false, true);
+apply_impl_to_all_variants!(impl_pair_map);
 
 pub fn hoge(e: EitherOrBoth<i32, i32>) -> EitherOrBoth<i64, i64> {
     e.map_either(|a| a as i64, |b| b as i64)
