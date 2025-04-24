@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use ::std::fmt::Debug;
+use ::std::ops::{Deref, DerefMut};
 use ::std::pin::Pin;
 
 #[macro_use]
@@ -89,17 +90,13 @@ macro_rules! impl_left_right_getters {
                 })
             }
 
-            /// Apply the function `f` on the value in the left position if it is present,
-            /// and then rewrap the result in a same variant of the new type.
-            pub fn map_left<F, L2>(self, f: F) -> $name<L2, R>
-            where
-                F: FnOnce(L) -> L2,
-            {
+            /// Returns a tuple of the optional left and right values.
+            pub fn left_and_right(self) -> (Option<L>, Option<R>) {
                 match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => $name::Left(l) => $name::Left(f(l)),
-                    @either => $name::Right(r) => $name::Right(r),
-                    @neither => $name::Neither => $name::Neither,
-                    @both => $name::Both(l, r) => $name::Both(f(l), r),
+                    @either => $name::Left(l) => (Some(l), None),
+                    @either => $name::Right(r) => (None, Some(r)),
+                    @neither => $name::Neither => (None, None),
+                    @both => $name::Both(l, r) => (Some(l), Some(r)),
                 })
             }
 
@@ -267,7 +264,76 @@ macro_rules! impl_as_ref_mut {
                     })
                 }
             }
+
+            /// Returns a new value using the `Deref` trait for `L` and `R` values.
+            pub fn as_deref(&self) -> $name<&L::Target, &R::Target>
+            where
+                L: Deref,
+                R: Deref,
+            {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(l.deref()),
+                    @either => $name::Right(r) => $name::Right(r.deref()),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(l.deref(), r.deref()),
+                })
+            }
+
+            /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
+            pub fn as_deref_mut(&mut self) -> $name<&mut L::Target, &mut R::Target>
+            where
+                L: DerefMut,
+                R: DerefMut,
+            {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(l.deref_mut()),
+                    @either => $name::Right(r) => $name::Right(r.deref_mut()),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(l.deref_mut(), r.deref_mut()),
+                })
+            }
         }
+    };
+}
+
+// impl for map_left, map_right.
+macro_rules! impl_map_left_right {
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl<L, R> $name<L, R> {
+
+            /// Apply the function `f` on the value in the left position if it is present,
+            /// and then rewrap the result in a same variant of the new type.
+            pub fn map_left<F, L2>(self, f: F) -> $name<L2, R>
+            where
+                F: FnOnce(L) -> L2,
+            {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(f(l)),
+                    @either => $name::Right(r) => $name::Right(r),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(f(l), r),
+                })
+            }
+        }
+    };
+}
+
+// impl for into_left, into_right.
+macro_rules! impl_into_left_right {
+    ($name:ident, $has_e:ident, false, $has_b:ident) => {
+        impl<L, R> $name<L, R> {
+            pub fn into_left(self) -> L where R: Into<L> {
+                match_possible_variants!(self, $has_e, false, $has_b, {
+                    @either => $name::Left(l) => l,
+                    @either => $name::Right(r) => r.into(),
+                    @neither => $name::Neither => unreachable!(),
+                    @both => $name::Both(l, _) => l,
+                })
+            }
+        }
+    };
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
     };
 }
 
@@ -275,3 +341,5 @@ apply_impl_to_all_variants!(impl_left_right_getters);
 apply_impl_to_all_variants!(impl_left_right_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
 apply_impl_to_all_variants!(impl_as_ref_mut);
+apply_impl_to_all_variants!(impl_map_left_right);
+apply_impl_to_all_variants!(impl_into_left_right);
