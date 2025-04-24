@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::std::fmt::Debug;
+use ::std::pin::Pin;
+
 #[macro_use]
 mod macros;
 
@@ -50,6 +53,7 @@ pub enum EitherOrNeitherOrBoth<A, B> {
 
 /// impl left / right getters
 macro_rules! impl_left_right_getters {
+    ($name:ident, false, false, true) => { /* skip for `Both` type. */};
     ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
         impl<L, R> $name<L, R> {
             /// Return `true` if the variant *contains* a left value.
@@ -98,10 +102,39 @@ macro_rules! impl_left_right_getters {
                     @both => $name::Both(l, r) => $name::Both(f(l), r),
                 })
             }
+
+            /// Unwrap the left value from the variant.
+            ///
+            /// # Panics
+            ///
+            /// - If the variant is something not containing a left value.
+            pub fn unwrap_left(self) -> L where R: Debug {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => l,
+                    @either => $name::Right(r) => panic!("Expected a Left variant, but got a right value:{:?}", r),
+                    @neither => $name::Neither => panic!("Expected a Left variant, but got a Neither variant"),
+                    @both => $name::Both(l, _) => l,
+                })
+            }
+
+            /// Unwrap the left value from the variant.
+            ///
+            /// # Panics
+            ///
+            /// - If the variant is something not containing a left value.
+            pub fn expect_left(self, msg: &str) -> L where R: Debug {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => l,
+                    @either => $name::Right(r) => panic!("{}: {:?}", msg, r),
+                    @neither => $name::Neither => panic!("{}", msg),
+                    @both => $name::Both(l, _) => l,
+                })
+            }
         }
     };
 }
 
+// impl for left / right getters, which does 'or' and 'and' operations.
 macro_rules! impl_left_right_and_or_methods {
     ($name:ident, false, false, true) => { /* skip for `Both` type. */};
     ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
@@ -129,35 +162,116 @@ macro_rules! impl_left_right_and_or_methods {
                     @both => $name::Both(l, _) => l,
                 })
             }
-        }
-    };
-}
 
-/// Implements map_either for pair-like types with conditional variants
-macro_rules! impl_pair_map {
-    ($name:ident, $has_e:ident, false, $has_b:ident) => {
-        impl<A, B> $name<A, B> {
-            pub fn map_either<F, G, C, D>(self, f: F, g: G) -> $name<C, D>
-            where
-                F: FnOnce(A) -> C,
-                G: FnOnce(B) -> D,
-            {
-                match_possible_variants!(self, $has_e, false, $has_b, {
-                    @either => $name::Left(a) => $name::Left(f(a)),
-                    @either => $name::Right(b) => $name::Right(g(b)),
-                    @neither => $name::Neither => unreachable!(),
-                    @both => $name::Both(a, b) => $name::Both(f(a), g(b)),
+            /// Return left value or default value.
+            pub fn left_or_default(self) -> L where L: Default {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => l,
+                    @either => $name::Right(_) => L::default(),
+                    @neither => $name::Neither => L::default(),
+                    @both => $name::Both(l, _) => l,
+                })
+            }
+
+            /// Return left value or computes it from a closure.
+            pub fn left_or_else<F>(self, f: F) -> L where F: FnOnce() -> L {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => l,
+                    @either => $name::Right(_) => f(),
+                    @neither => $name::Neither => f(),
+                    @both => $name::Both(l, _) => l,
                 })
             }
         }
     };
-    ($($_:tt),*) => {};
+}
+
+// impl for left / right 'just' getters.
+macro_rules! impl_left_right_just_getters {
+    ($name:ident, true, $has_n:ident, true) => {
+        /* Only available for the types containing both `Either` and `Both` variants. */
+
+        /// If the variant is a `Left` variant, return the left value.
+        /// Otherwise (even the variant is a `Both` variant), return `None`.
+        impl<L, R> $name<L, R> {
+            pub fn just_left(self) -> Option<L> {
+                match_possible_variants!(self, true, $has_n, true, {
+                    @either => $name::Left(l) => Some(l),
+                    @either => $name::Right(_) => None,
+                    @neither => $name::Neither => None,
+                    @both => $name::Both(_, _) => None,
+                })
+            }
+        }
+    };
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
+    };
+}
+
+// impl for as_ref / as_mut.
+macro_rules! impl_as_ref_mut {
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl<L, R> $name<L, R> {
+            /// Creates a new variant with references to the contained values.
+            pub fn as_ref(&self) -> $name<&L, &R> {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(l),
+                    @either => $name::Right(r) => $name::Right(r),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(l, r),
+                })
+            }
+
+            /// Creates a new variant with mutable references to the contained values.
+            pub fn as_mut(&mut self) -> $name<&mut L, &mut R> {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(l),
+                    @either => $name::Right(r) => $name::Right(r),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(l, r),
+                })
+            }
+
+            /// Creates a new pinned variant with references to the contained values.
+            pub fn as_pin_ref(self: Pin<&Self>) -> $name<Pin<&L>, Pin<&R>> {
+                // SAFETY: This is safe because:
+                // 1. We never move the inner values - we only create a new reference to them
+                // 2. The original Pin<&Self> guarantees that the original data won't move
+                // 3. We're maintaining the pinning invariant by wrapping the references in Pin
+                // 4. The lifetime of the output references is tied to the input lifetime
+                unsafe {
+                    match_possible_variants!(self.get_ref(), $has_e, $has_n, $has_b, {
+                        @either => $name::Left(l) => $name::Left(Pin::new_unchecked(l)),
+                        @either => $name::Right(r) => $name::Right(Pin::new_unchecked(r)),
+                        @neither => $name::Neither => $name::Neither,
+                        @both => $name::Both(l, r) => $name::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                    })
+                }
+            }
+
+            /// Creates a new pinned variant with mutable references to the contained values.
+            pub fn as_pin_mut(self: Pin<&mut Self>) -> $name<Pin<&mut L>, Pin<&mut R>> {
+                // SAFETY: This is safe because:
+                // 1. We never move the inner values out of the pin
+                // 2. We're creating new Pin instances from references to pinned data
+                // 3. The original Pin<&mut Self> guarantees unique access
+                // 4. We maintain the pinning invariant by wrapping the mutable references in Pin
+                // 5. get_unchecked_mut is safe here as we have exclusive access via Pin<&mut Self>
+                unsafe {
+                    match_possible_variants!(self.get_unchecked_mut(), $has_e, $has_n, $has_b, {
+                        @either => $name::Left(l) => $name::Left(Pin::new_unchecked(l)),
+                        @either => $name::Right(r) => $name::Right(Pin::new_unchecked(r)),
+                        @neither => $name::Neither => $name::Neither,
+                        @both => $name::Both(l, r) => $name::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                    })
+                }
+            }
+        }
+    };
 }
 
 apply_impl_to_all_variants!(impl_left_right_getters);
 apply_impl_to_all_variants!(impl_left_right_and_or_methods);
-apply_impl_to_all_variants!(impl_pair_map);
-
-pub fn hoge(e: EitherOrBoth<i32, i32>) -> EitherOrBoth<i64, i64> {
-    e.map_either(|a| a as i64, |b| b as i64)
-}
+apply_impl_to_all_variants!(impl_left_right_just_getters);
+apply_impl_to_all_variants!(impl_as_ref_mut);
