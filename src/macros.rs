@@ -161,11 +161,85 @@ macro_rules! match_possible_variants {
 
 macro_rules! apply_impl_to_all_variants {
     ($name:ident) => {
-        $name!(EitherOrNeitherOrBoth, true, true, true);
-        $name!(EitherOrNeither, true, true, false);
-        $name!(EitherOrBoth, true, false, true);
-        $name!(NeitherOrBoth, false, true, true);
-        $name!(Either, true, false, false);
-        $name!(Both, false, false, true);
+        $name!(true, true, true);
+        $name!(true, true, false);
+        $name!(true, false, true);
+        $name!(false, true, true);
+        $name!(true, false, false);
+        $name!(false, false, true);
+        $name!(false, true, false);
+        $name!(false, false, false);
+    };
+}
+
+macro_rules! pair_type {
+    (true, true, true, $left:ty, $right:ty) => {
+        $crate::EitherOrNeitherOrBoth::<$left, $right>
+    };
+    (true, true, false, $left:ty, $right:ty) => {
+        $crate::EitherOrNeither::<$left, $right>
+    };
+    (true, false, true, $left:ty, $right:ty) => {
+        $crate::EitherOrBoth::<$left, $right>
+    };
+    (false, true, true, $left:ty, $right:ty) => {
+        $crate::NeitherOrBoth::<$left, $right>
+    };
+    (true, false, false, $left:ty, $right:ty) => {
+        $crate::Either::<$left, $right>
+    };
+    (false, false, true, $left:ty, $right:ty) => {
+        $crate::Both::<$left, $right>
+    };
+    (false, true, false, $left:ty, $right:ty) => {
+        $crate::Neither
+    };
+    (false, false, false, $left:ty, $right:ty) => {
+        !
+    };
+}
+
+macro_rules! use_pair_variants {
+    (true, true, true) => {
+        #[allow(unused)]
+        use $crate::EitherOrNeitherOrBoth::*;
+    };
+    (true, true, false) => {
+        #[allow(unused)]
+        use $crate::EitherOrNeither::*;
+    };
+    (true, false, true) => {
+        #[allow(unused)]
+        use $crate::EitherOrBoth::*;
+    };
+    (false, true, true) => {
+        #[allow(unused)]
+        use $crate::NeitherOrBoth::*;
+    };
+    (true, false, false) => {
+        #[allow(unused)]
+        use $crate::Either::*;
+    };
+    (false, false, true) => {
+        #[allow(unused)]
+        use $crate::Both::*;
+    };
+    (false, true, false) => {
+        #[allow(unused)]
+        use $crate::Neither::*;
+    };
+    (false, false, false) => {};
+}
+
+macro_rules! impl_pair_type {
+    (false, $has_n:ident, false, $left:ident, $right:ident, { $($body:tt)* }) => {
+        impl pair_type!(false, $has_n, false, $left, $right) {
+            $($body)*
+        }
+    };
+    ($has_e:ident, $has_n:ident, $has_b:ident, $left:ident, $right:ident, { $($body:tt)* }) => {
+        impl<$left, $right> pair_type!($has_e, $has_n, $has_b, $left, $right) {
+            $($body)*
+        }
     };
 }
