@@ -382,32 +382,6 @@ macro_rules! impl_as_deref {
     };
 }
 
-// impl for map_left, map_right.
-macro_rules! impl_map_left_right {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-
-            /// Apply the function `f` on the value in the left position if it is present,
-            /// and then rewrap the result in a same variant of the new type.
-            pub fn map_left<F, L2>(self, f: F) -> pair_type!($has_e, $has_n, $has_b, L2, R)
-            where
-                F: FnOnce(L) -> L2,
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(f(l)),
-                    @either => Self::Right(r) => Right(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(f(l), r),
-                })
-            }
-        });
-    };
-}
-
 // impl for into_left, into_right.
 macro_rules! impl_into_left_right {
     (false, $has_n:ident, false) => {
@@ -449,6 +423,21 @@ macro_rules! impl_map {
                     @either => Self::Right(r) => Right(g(r)),
                     @neither => Self::Neither => Neither,
                     @both => Self::Both(l, r) => Both(f(l), g(r)),
+                })
+            }
+
+            /// Apply the function `f` on the value in the left position if it is present,
+            /// and then rewrap the result in a same variant of the new type.
+            pub fn map_left<F, L2>(self, f: F) -> pair_type!($has_e, $has_n, $has_b, L2, R)
+            where
+                F: FnOnce(L) -> L2,
+            {
+                use_pair_variants!($has_e, $has_n, $has_b);
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => Self::Left(l) => Left(f(l)),
+                    @either => Self::Right(r) => Right(r),
+                    @neither => Self::Neither => Neither,
+                    @both => Self::Both(l, r) => Both(f(l), r),
                 })
             }
         });
@@ -507,10 +496,8 @@ apply_impl_to_all_variants!(impl_is_checkers);
 apply_impl_to_all_variants!(impl_flip);
 apply_impl_to_all_variants!(impl_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);
-apply_impl_to_all_variants!(impl_left_right_just_getters);
 apply_impl_to_all_variants!(impl_as_ref);
 apply_impl_to_all_variants!(impl_as_deref);
-apply_impl_to_all_variants!(impl_map_left_right);
 apply_impl_to_all_variants!(impl_into_left_right);
 apply_impl_to_all_variants!(impl_map);
 apply_impl_to_all_variants!(impl_map_with);
