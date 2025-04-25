@@ -56,15 +56,10 @@ pub enum EitherOrNeitherOrBoth<A, B> {
     Both(A, B),
 }
 
-/// impl left / right getters
-macro_rules! impl_left_right_getters {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
+macro_rules! impl_is_checkers {
+    (false, false, false) => { /* Does not allow `!` because we cannot implement `!` types. */ };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
         impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// Return `true` if the variant *contains* a left value.
-            /// i.e. `Left(l)` or `Both(l, _)`.
             pub fn is_left(&self) -> bool {
                 match_possible_variants!(self, $has_e, $has_n, $has_b, {
                     @either => Self::Left(_) => true,
@@ -74,17 +69,34 @@ macro_rules! impl_left_right_getters {
                 })
             }
 
-            /// Return `true` if the variant *contains* a right value.
-            /// i.e. `Right(r)` or `Both(_, r)`.
-            pub fn is_right(&self) -> bool {
+            pub fn is_neither(&self) -> bool {
                 match_possible_variants!(self, $has_e, $has_n, $has_b, {
                     @either => Self::Left(_) => false,
-                    @either => Self::Right(_) => true,
+                    @either => Self::Right(_) => false,
+                    @neither => Self::Neither => true,
+                    @both => Self::Both(_, _) => false,
+                })
+            }
+
+            pub fn is_both(&self) -> bool {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => Self::Left(_) => false,
+                    @either => Self::Right(_) => false,
                     @neither => Self::Neither => false,
                     @both => Self::Both(_, _) => true,
                 })
             }
+        });
+    };
+}
 
+/// impl left / right getters
+macro_rules! impl_left_right_getters {
+    (false, $has_n:ident, false) => {
+         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+    };
+    ($has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
             /// Convert the left side of the variant into an `Option`.
             /// i.e. `Left(l)` -> `Some(l)`, `Right(_)` -> `None`, `Both(l, _)` -> `Some(l)`.
             pub fn left(self) -> Option<L> {
@@ -484,6 +496,7 @@ macro_rules! impl_map_with {
     };
 }
 
+apply_impl_to_all_variants!(impl_is_checkers);
 apply_impl_to_all_variants!(impl_left_right_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
