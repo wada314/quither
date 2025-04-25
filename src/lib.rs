@@ -496,47 +496,34 @@ macro_rules! impl_or_insert {
     (false, $has_n:ident, false) => {
         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
-    ($has_e:ident, false, $has_b:ident) => {
-        /* Only allow the pair type which does not include `Neither` variant. */
-        impl_pair_type!($has_e, false, $has_b, L, R, {
-            pub fn left_or_insert(&mut self, #[allow(unused)] l2: L) -> &mut L {
-                match_possible_variants!(self, $has_e, false, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => {
-                        // TODO: This can be both
-                        *self = Self::Left(l2);
-                        match self {
-                            Self::Left(l) => l,
-                            _ => unreachable!(),
-                        }
-                    }
-                    // TODO: This can be Right
-                    @neither => Self::Neither => unreachable!(),
-                    @both => Self::Both(l, _) => l
-                })
-            }
-
-            pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
+    (true, true, true) => {
+        /* Allows variant promotion `Neither` -> `Left` and `Right` -> `Both`.*/
+        impl_pair_type!(true, true, true, L, R, {
+            pub fn left_or_insert_with<F>(&mut self, f: F) -> &mut L
             where
                 F: FnOnce() -> L,
             {
-                match_possible_variants!(self, $has_e, false, $has_b, {
+                use_pair_variants!(true, true, true);
+                match_possible_variants!(self, true, true, true, {
                     @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => {
-                        // TODO: This can be both
-                        *self = Self::Left(f());
+                    @either => Self::Right(r) => {
+                        *self = Both(f(), r);
                         match self {
-                            Self::Left(l) => l,
-                            _ => unreachable!(),
+                            Both(l, _) => l,
                         }
                     }
-                    // TODO: This can be Right
-                    @neither => Self::Neither => unreachable!(),
+                    @neither => Self::Neither => {
+                        *self = Left(f());
+                        match self {
+                            Left(l) => l,
+                        }
+                    }
                     @both => Self::Both(l, _) => l
                 })
             }
         });
     };
+
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
         /* empty for other cases. */
     };
