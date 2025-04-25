@@ -90,8 +90,25 @@ macro_rules! impl_is_checkers {
     };
 }
 
-/// impl left / right getters
-macro_rules! impl_left_right_getters {
+macro_rules! impl_flip {
+    (false, false, false) => { /* Does not allow `!` because we cannot implement `!` types. */ };
+    ($has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
+            pub fn flip(self) -> pair_type!($has_e, $has_n, $has_b, R, L) {
+                use_pair_variants!($has_e, $has_n, $has_b);
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => Self::Left(l) => Right(l),
+                    @either => Self::Right(r) => Left(r),
+                    @neither => Self::Neither => Neither,
+                    @both => Self::Both(l, r) => Both(r, l),
+                })
+            }
+        });
+    };
+}
+
+/// impl getters
+macro_rules! impl_getters {
     (false, $has_n:ident, false) => {
          /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
@@ -105,6 +122,15 @@ macro_rules! impl_left_right_getters {
                     @either => Self::Right(_) => None,
                     @neither => Self::Neither => None,
                     @both => Self::Both(l, _) => Some(l),
+                })
+            }
+
+            pub fn both(self) -> Option<(L, R)> {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => Self::Left(_) => None,
+                    @either => Self::Right(_) => None,
+                    @neither => Self::Neither => None,
+                    @both => Self::Both(l, r) => Some((l, r)),
                 })
             }
 
@@ -384,9 +410,10 @@ macro_rules! impl_map_left_right {
 // impl for into_left, into_right.
 macro_rules! impl_into_left_right {
     (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
     ($has_e:ident, false, $has_b:ident) => {
+        /* Only allow the pair type which does not include `Neither` variant. */
         impl_pair_type!($has_e, false, $has_b, L, R, {
             pub fn into_left(self) -> L where R: Into<L> {
                 match_possible_variants!(self, $has_e, false, $has_b, {
@@ -394,27 +421,6 @@ macro_rules! impl_into_left_right {
                     @either => Self::Right(r) => r.into(),
                     @neither => Self::Neither => unreachable!(),
                     @both => Self::Both(l, _) => l,
-                })
-            }
-        });
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        /* empty for other cases. */
-    };
-}
-
-macro_rules! impl_both_getters {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, true) => {
-        impl_pair_type!($has_e, $has_n, true, L, R, {
-            pub fn both(self) -> Option<(L, R)> {
-                match_possible_variants!(self, $has_e, $has_n, true, {
-                    @either => Self::Left(_) => None,
-                    @either => Self::Right(_) => None,
-                    @neither => Self::Neither => None,
-                    @both => Self::Both(l, r) => Some((l, r)),
                 })
             }
         });
@@ -497,13 +503,13 @@ macro_rules! impl_map_with {
 }
 
 apply_impl_to_all_variants!(impl_is_checkers);
-apply_impl_to_all_variants!(impl_left_right_getters);
+apply_impl_to_all_variants!(impl_flip);
+apply_impl_to_all_variants!(impl_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
 apply_impl_to_all_variants!(impl_as_ref_mut);
 apply_impl_to_all_variants!(impl_map_left_right);
 apply_impl_to_all_variants!(impl_into_left_right);
-apply_impl_to_all_variants!(impl_both_getters);
 apply_impl_to_all_variants!(impl_map);
 apply_impl_to_all_variants!(impl_map_with);
 
