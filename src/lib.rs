@@ -131,8 +131,8 @@ macro_rules! impl_left_right_getters {
     };
 }
 
-// impl for left / right getters, which does 'or' and 'and' operations.
-macro_rules! impl_left_right_and_or_methods {
+// impl for 'or' and 'and' operations.
+macro_rules! impl_and_or_methods {
     ($name:ident, false, false, true) => { /* skip for `Both` type. */};
     ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
         impl<L, R> $name<L, R> {
@@ -147,6 +147,37 @@ macro_rules! impl_left_right_and_or_methods {
                     @either => $name::Right(r) => $name::Right(r),
                     @neither => $name::Neither => $name::Neither,
                     @both => $name::Both(l, _) => f(l),
+                })
+            }
+
+            pub fn or(self, l: L, r: R) -> (L, R) {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l2) => (l2, r),
+                    @either => $name::Right(r2) => (l, r2),
+                    @neither => $name::Neither => (l, r),
+                    @both => $name::Both(l2, r2) => (l2, r2),
+                })
+            }
+
+            pub fn or_default(self) -> (L, R) where L: Default, R: Default {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => (l, R::default()),
+                    @either => $name::Right(r) => (L::default(), r),
+                    @neither => $name::Neither => (L::default(), R::default()),
+                    @both => $name::Both(l, r) => (l, r),
+                })
+            }
+
+            pub fn or_else<F, G>(self, f: F, g: G) -> (L, R)
+            where
+                F: FnOnce() -> L,
+                G: FnOnce() -> R,
+            {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => (l, g()),
+                    @either => $name::Right(r) => (f(), r),
+                    @neither => $name::Neither => (f(), g()),
+                    @both => $name::Both(l, r) => (l, r),
                 })
             }
 
@@ -406,8 +437,8 @@ macro_rules! impl_map_with_both {
                 G: FnOnce(Ctx, R) -> R2,
             {
                 match_possible_variants!(self, $has_e, $has_n, true, {
-                    @either => $name::Left(_) => $name::Left(f(ctx.clone(), l)),
-                    @either => $name::Right(_) => $name::Right(g(ctx.clone(), r)),
+                    @either => $name::Left(l) => $name::Left(f(ctx.clone(), l)),
+                    @either => $name::Right(r) => $name::Right(g(ctx.clone(), r)),
                     @neither => $name::Neither => $name::Neither,
                     @both => $name::Both(l, r) => $name::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
                 })
@@ -420,7 +451,7 @@ macro_rules! impl_map_with_both {
 }
 
 apply_impl_to_all_variants!(impl_left_right_getters);
-apply_impl_to_all_variants!(impl_left_right_and_or_methods);
+apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
 apply_impl_to_all_variants!(impl_as_ref_mut);
 apply_impl_to_all_variants!(impl_map_left_right);
