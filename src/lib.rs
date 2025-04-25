@@ -510,6 +510,7 @@ macro_rules! impl_or_insert {
                             _ => unreachable!(),
                         }
                     }
+                    // TODO: This can be Right
                     @neither => Self::Neither => unreachable!(),
                     @both => Self::Both(l, _) => l
                 })
@@ -529,6 +530,7 @@ macro_rules! impl_or_insert {
                             _ => unreachable!(),
                         }
                     }
+                    // TODO: This can be Right
                     @neither => Self::Neither => unreachable!(),
                     @both => Self::Both(l, _) => l
                 })
