@@ -337,9 +337,135 @@ macro_rules! impl_into_left_right {
     };
 }
 
+macro_rules! impl_both_getters {
+    ($name:ident, $has_e:ident, $has_n:ident, true) => {
+        impl<L, R> $name<L, R> {
+            pub fn both(self) -> Option<(L, R)> {
+                match_possible_variants!(self, $has_e, $has_n, true, {
+                    @either => $name::Left(_) => None,
+                    @either => $name::Right(_) => None,
+                    @neither => $name::Neither => None,
+                    @both => $name::Both(l, r) => Some((l, r)),
+                })
+            }
+        }
+    };
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
+    };
+}
+
+macro_rules! impl_map {
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl<L, R> $name<L, R> {
+            pub fn map<F, G, L2, R2>(self, f: F, g: G) -> $name<L2, R2>
+            where
+                F: FnOnce(L) -> L2,
+                G: FnOnce(R) -> R2,
+            {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => $name::Left(l) => $name::Left(f(l)),
+                    @either => $name::Right(r) => $name::Right(g(r)),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(f(l), g(r)),
+                })
+            }
+        }
+    };
+}
+
+macro_rules! impl_map_with_no_both {
+    ($name:ident, $has_e:ident, $has_n:ident, false) => {
+        impl<L, R> $name<L, R> {
+            pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> $name<L2, R2>
+            where
+                F: FnOnce(Ctx, L) -> L2,
+                G: FnOnce(Ctx, R) -> R2,
+            {
+                match_possible_variants!(self, $has_e, $has_n, false, {
+                    @either => $name::Left(l) => $name::Left(f(ctx, l)),
+                    @either => $name::Right(r) => $name::Right(g(ctx, r)),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => unreachable!(),
+                })
+            }
+        }
+    };
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
+    };
+}
+
+macro_rules! impl_map_with_both {
+    ($name:ident, $has_e:ident, $has_n:ident, true) => {
+        impl<L, R> $name<L, R> {
+            pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> $name<L2, R2>
+            where
+                Ctx: Clone,
+                F: FnOnce(Ctx, L) -> L2,
+                G: FnOnce(Ctx, R) -> R2,
+            {
+                match_possible_variants!(self, $has_e, $has_n, true, {
+                    @either => $name::Left(_) => $name::Left(f(ctx.clone(), l)),
+                    @either => $name::Right(_) => $name::Right(g(ctx.clone(), r)),
+                    @neither => $name::Neither => $name::Neither,
+                    @both => $name::Both(l, r) => $name::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
+                })
+            }
+        }
+    };
+    ($name:ident, $has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
+    };
+}
+
 apply_impl_to_all_variants!(impl_left_right_getters);
 apply_impl_to_all_variants!(impl_left_right_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
 apply_impl_to_all_variants!(impl_as_ref_mut);
 apply_impl_to_all_variants!(impl_map_left_right);
 apply_impl_to_all_variants!(impl_into_left_right);
+apply_impl_to_all_variants!(impl_both_getters);
+apply_impl_to_all_variants!(impl_map);
+apply_impl_to_all_variants!(impl_map_with_no_both);
+apply_impl_to_all_variants!(impl_map_with_both);
+
+impl<L, R> Either<L, R> {
+    pub fn either<F, G, T>(self, f: F, g: G) -> T
+    where
+        F: FnOnce(L) -> T,
+        G: FnOnce(R) -> T,
+    {
+        match self {
+            Either::Left(l) => f(l),
+            Either::Right(r) => g(r),
+        }
+    }
+
+    pub fn either_with<Ctx, F, G, T>(self, ctx: Ctx, f: F, g: G) -> T
+    where
+        F: FnOnce(Ctx, L) -> T,
+        G: FnOnce(Ctx, R) -> T,
+    {
+        match self {
+            Either::Left(l) => f(ctx, l),
+            Either::Right(r) => g(ctx, r),
+        }
+    }
+
+    pub fn map_either<F, G, L2, R2>(self, f: F, g: G) -> Either<L2, R2>
+    where
+        F: FnOnce(L) -> L2,
+        G: FnOnce(R) -> R2,
+    {
+        Self::map(self, f, g)
+    }
+
+    pub fn map_either_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Either<L2, R2>
+    where
+        F: FnOnce(Ctx, L) -> L2,
+        G: FnOnce(Ctx, R) -> R2,
+    {
+        Self::map_with(self, ctx, f, g)
+    }
+}
