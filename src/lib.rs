@@ -171,6 +171,17 @@ macro_rules! impl_getters {
                     @both => Self::Both(l, _) => l,
                 })
             }
+
+            /// If the variant is a `Left` variant, return the left value.
+            /// Otherwise (even the variant is a `Both` variant), return `None`.
+            pub fn just_left(self) -> Option<L> {
+                match_possible_variants!(self, $has_e, $has_n, $has_b, {
+                    @either => Self::Left(l) => Some(l),
+                    @either => Self::Right(_) => None,
+                    @neither => Self::Neither => None,
+                    @both => Self::Both(_, _) => None,
+                })
+            }
         });
     };
 }
@@ -261,31 +272,10 @@ macro_rules! impl_and_or_methods {
     };
 }
 
-// impl for left / right 'just' getters.
-macro_rules! impl_left_right_just_getters {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// If the variant is a `Left` variant, return the left value.
-            /// Otherwise (even the variant is a `Both` variant), return `None`.
-            pub fn just_left(self) -> Option<L> {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Some(l),
-                    @either => Self::Right(_) => None,
-                    @neither => Self::Neither => None,
-                    @both => Self::Both(_, _) => None,
-                })
-            }
-        });
-    };
-}
-
 // impl for as_ref / as_mut.
-macro_rules! impl_as_ref_mut {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+macro_rules! impl_as_ref {
+    (false, false, false) => {
+         /* Does not allow `!` type because it is not allowed to implement `!` type. */
     };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
         impl_pair_type!($has_e, $has_n, $has_b, L, R, {
@@ -319,6 +309,7 @@ macro_rules! impl_as_ref_mut {
                 // 2. The original Pin<&Self> guarantees that the original data won't move
                 // 3. We're maintaining the pinning invariant by wrapping the references in Pin
                 // 4. The lifetime of the output references is tied to the input lifetime
+                #[allow(unused)]
                 unsafe {
                     match_possible_variants!(self.get_ref(), $has_e, $has_n, $has_b, {
                         @either => Self::Left(l) => Left(Pin::new_unchecked(l)),
@@ -347,7 +338,17 @@ macro_rules! impl_as_ref_mut {
                     })
                 }
             }
+        });
+    }
+}
 
+// impl for as_deref / as_deref_mut.
+macro_rules! impl_as_deref {
+    (false, $has_n:ident, false) => {
+         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+    };
+    ($has_e:ident, $has_n:ident, $has_b:ident) => {
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
             /// Returns a new value using the `Deref` trait for `L` and `R` values.
             pub fn as_deref(&self) -> pair_type!($has_e, $has_n, $has_b, &L::Target, &R::Target)
             where
@@ -507,7 +508,8 @@ apply_impl_to_all_variants!(impl_flip);
 apply_impl_to_all_variants!(impl_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_left_right_just_getters);
-apply_impl_to_all_variants!(impl_as_ref_mut);
+apply_impl_to_all_variants!(impl_as_ref);
+apply_impl_to_all_variants!(impl_as_deref);
 apply_impl_to_all_variants!(impl_map_left_right);
 apply_impl_to_all_variants!(impl_into_left_right);
 apply_impl_to_all_variants!(impl_map);
