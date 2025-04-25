@@ -492,6 +492,54 @@ macro_rules! impl_map_with {
     };
 }
 
+macro_rules! impl_or_insert {
+    (false, $has_n:ident, false) => {
+        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+    };
+    ($has_e:ident, false, $has_b:ident) => {
+        /* Only allow the pair type which does not include `Neither` variant. */
+        impl_pair_type!($has_e, false, $has_b, L, R, {
+            pub fn left_or_insert(&mut self, #[allow(unused)] l2: L) -> &mut L {
+                match_possible_variants!(self, $has_e, false, $has_b, {
+                    @either => Self::Left(l) => l,
+                    @either => Self::Right(_) => {
+                        // TODO: This can be both
+                        *self = Self::Left(l2);
+                        match self {
+                            Self::Left(l) => l,
+                            _ => unreachable!(),
+                        }
+                    }
+                    @neither => Self::Neither => unreachable!(),
+                    @both => Self::Both(l, _) => l
+                })
+            }
+
+            pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
+            where
+                F: FnOnce() -> L,
+            {
+                match_possible_variants!(self, $has_e, false, $has_b, {
+                    @either => Self::Left(l) => l,
+                    @either => Self::Right(_) => {
+                        // TODO: This can be both
+                        *self = Self::Left(f());
+                        match self {
+                            Self::Left(l) => l,
+                            _ => unreachable!(),
+                        }
+                    }
+                    @neither => Self::Neither => unreachable!(),
+                    @both => Self::Both(l, _) => l
+                })
+            }
+        });
+    };
+    ($has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* empty for other cases. */
+    };
+}
+
 apply_impl_to_all_variants!(impl_is_checkers);
 apply_impl_to_all_variants!(impl_flip);
 apply_impl_to_all_variants!(impl_getters);
@@ -501,6 +549,7 @@ apply_impl_to_all_variants!(impl_as_deref);
 apply_impl_to_all_variants!(impl_into_left_right);
 apply_impl_to_all_variants!(impl_map);
 apply_impl_to_all_variants!(impl_map_with);
+apply_impl_to_all_variants!(impl_or_insert);
 
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
