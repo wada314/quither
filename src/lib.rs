@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::replace_with::replace_with_or_abort;
 use ::std::fmt::Debug;
 use ::std::ops::{Deref, DerefMut};
 use ::std::pin::Pin;
 
 #[macro_use]
 mod macros;
+
+// Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
 pub enum Either<A, B> {
     Left(A),
@@ -492,31 +495,60 @@ macro_rules! impl_map_with {
     };
 }
 
-macro_rules! impl_or_insert {
+macro_rules! impl_ensure {
     (false, $has_n:ident, false) => {
         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
-    (true, true, true) => {
-        /* Allows variant promotion `Neither` -> `Left` and `Right` -> `Both`.*/
-        impl_pair_type!(true, true, true, L, R, {
-            pub fn left_or_insert_with<F>(&mut self, f: F) -> &mut L
+    (true, $has_n:ident, $has_b:ident) => {
+        // If Neither is enabled, then the Neither variant is allowed to be promoted to Left.
+        // If Both is enabled, then the Right variant is allowed to be promoted to Both.
+        impl_pair_type!(true, $has_n, $has_b, L, R, {
+            pub fn ensure_left(&mut self, l: L) -> &mut L {
+                self.ensure_left_with(move || l)
+            }
+
+            pub fn ensure_left_with<F>(&mut self, f: F) -> &mut L
             where
                 F: FnOnce() -> L,
             {
-                use_pair_variants!(true, true, true);
-                match_possible_variants!(self, true, true, true, {
+                match_possible_variants!(self, true, $has_n, $has_b, {
                     @either => Self::Left(l) => l,
-                    @either => Self::Right(r) => {
-                        *self = Both(f(), r);
-                        match self {
-                            Both(l, _) => l,
-                        }
+                    @either => Self::Right(_) => {
+                        macro_if! { $has_b {
+                            // Right => Both promotion.
+                            let new_l = f();
+                            replace_with_or_abort(self, move |this| {
+                                let Self::Right(r) = this else {
+                                    unreachable!()
+                                };
+                                Self::Both(new_l, r)
+                            });
+                            let Self::Both(l, _) = self else {
+                                unreachable!()
+                            };
+                            l
+                        } else {
+                            // No promotion.
+                            *self = Self::Left(f());
+                            let Self::Left(l) = self else {
+                                unreachable!()
+                            };
+                            l
+                        }}
                     }
                     @neither => Self::Neither => {
-                        *self = Left(f());
-                        match self {
-                            Left(l) => l,
-                        }
+                        // Neither => Left promotion.
+                        let new_l = f();
+                        replace_with_or_abort(self, move |this| {
+                            let Self::Neither = this else {
+                                unreachable!()
+                            };
+                            Self::Left(new_l)
+                        });
+                        let Self::Left(l) = self else {
+                            unreachable!()
+                        };
+                        l
                     }
                     @both => Self::Both(l, _) => l
                 })
@@ -524,7 +556,22 @@ macro_rules! impl_or_insert {
         });
     };
 
+    (false, false, $has_b:ident) => {
+        // No promotions. In this case, the Neither variant should not exist.
+        impl_pair_type!(false, false, $has_b, L, R, {
+            pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
+            where
+                F: FnOnce() -> L,
+            {
+                match_possible_variants!(self, false, false, $has_b, {
+                    @both => Self::Both(l, _) => l
+                })
+            }
+        });
+    };
+
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
+        /* Interestingly, NeitherOrBoth is included here. */
         /* empty for other cases. */
     };
 }
@@ -538,7 +585,7 @@ apply_impl_to_all_variants!(impl_as_deref);
 apply_impl_to_all_variants!(impl_into_left_right);
 apply_impl_to_all_variants!(impl_map);
 apply_impl_to_all_variants!(impl_map_with);
-apply_impl_to_all_variants!(impl_or_insert);
+apply_impl_to_all_variants!(impl_ensure);
 
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T

@@ -243,3 +243,12 @@ macro_rules! impl_pair_type {
         }
     };
 }
+
+macro_rules! macro_if {
+    (true { $($true_body:tt)* } else { $($false_body:tt)* }) => {
+        { $($true_body)* }
+    };
+    (false { $($true_body:tt)* } else { $($false_body:tt)* }) => {
+        { $($false_body)* }
+    };
+}
