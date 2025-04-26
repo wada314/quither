@@ -499,14 +499,31 @@ macro_rules! impl_ensure {
     (false, $has_n:ident, false) => {
         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
+    (false, true, true) => {
+        /* Does not allow `NeitherOrBoth` variant because nothing we can do for `Neither` variant. */
+    };
     (true, $has_n:ident, $has_b:ident) => {
-        // If Neither is enabled, then the Neither variant is allowed to be promoted to Left.
-        // If Both is enabled, then the Right variant is allowed to be promoted to Both.
+        // If `Neither is enabled, then the `Neither` variant is allowed to be promoted to `Left`.
+        // If `Both` is enabled, then the `Right` variant is allowed to be promoted to `Both`.
         impl_pair_type!(true, $has_n, $has_b, L, R, {
+            /// Ensure the left value is present. If possible, keep the right value too.
+            ///
+            /// If the left value is already present, do nothing and return the left value.
+            /// If the left value is not present, then:
+            ///   - If it can "promote" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
+            ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
+            /// And set the left value to the given value and return it.
             pub fn ensure_left(&mut self, l: L) -> &mut L {
                 self.ensure_left_with(move || l)
             }
 
+            /// Ensure the left value is present. If possible, keep the right value too.
+            ///
+            /// If the left value is already present, do nothing and return the left value.
+            /// If the left value is not present, then:
+            ///   - If it can \"promote\" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
+            ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
+            /// And set the left value to the given closure's return value and return it.
             pub fn ensure_left_with<F>(&mut self, f: F) -> &mut L
             where
                 F: FnOnce() -> L,
@@ -556,22 +573,7 @@ macro_rules! impl_ensure {
         });
     };
 
-    (false, false, $has_b:ident) => {
-        // No promotions. In this case, the Neither variant should not exist.
-        impl_pair_type!(false, false, $has_b, L, R, {
-            pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
-            where
-                F: FnOnce() -> L,
-            {
-                match_possible_variants!(self, false, false, $has_b, {
-                    @both => Self::Both(l, _) => l
-                })
-            }
-        });
-    };
-
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        /* Interestingly, NeitherOrBoth is included here. */
         /* empty for other cases. */
     };
 }
