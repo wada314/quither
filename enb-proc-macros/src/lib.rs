@@ -16,9 +16,7 @@ use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::{
-    GenericArgument, Ident, ItemImpl, Path, PathArguments, Type, TypePath, parse,
-    parse_macro_input,
-    punctuated::Pair,
+    GenericArgument, Ident, ItemImpl, Path, PathArguments, Type, TypePath, parse_macro_input,
     visit_mut::{VisitMut, visit_path_mut},
 };
 
