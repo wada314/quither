@@ -1,7 +1,2 @@
-[package]
-name = "enb"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-replace_with = "0.1.7"
+[workspace]
+members = ["enb", "enb-proc-macros"]
