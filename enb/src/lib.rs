@@ -17,6 +17,8 @@ use ::std::fmt::Debug;
 use ::std::ops::{Deref, DerefMut};
 use ::std::pin::Pin;
 
+use ::enb_proc_macros::enb;
+
 #[macro_use]
 mod macros;
 
@@ -57,6 +59,13 @@ pub enum EitherOrNeitherOrBoth<A, B> {
     Right(B),
     Neither,
     Both(A, B),
+}
+
+#[enb]
+impl<L, R> Enb<L, R> {
+    pub fn hello(&self) {
+        println!("hello");
+    }
 }
 
 macro_rules! impl_is_checkers {
