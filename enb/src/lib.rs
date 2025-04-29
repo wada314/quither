@@ -794,7 +794,16 @@ impl<L, R> Enb<L, R> {
 impl<L, R> Enb<Option<L>, Option<R>> {
     #[enb(has_either || has_both)]
     pub fn factor_none(self) -> Option<Enb<L, R, true, false, has_both>> {
-        todo!()
+        match self {
+            #[either]
+            Self::Left(Some(l)) => Some(Enb::Left(l)),
+            #[either]
+            Self::Right(Some(r)) => Some(Enb::Right(r)),
+            #[neither]
+            Self::Neither => Some(Enb::Neither),
+            #[both]
+            Self::Both(l, r) => Some(Enb::Both(l, r)),
+        }
     }
 }
 
