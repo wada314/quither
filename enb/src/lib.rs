@@ -84,48 +84,52 @@ impl<L, R> Enb<L, R> {
             Self::Both(_, _) => true,
         }
     }
-}
 
-macro_rules! impl_is_checkers {
-    (false, false, false) => { /* Does not allow `!` because we cannot implement `!` types. */ };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
+    pub fn is_neither(&self) -> bool {
+        match self {
+            #[either]
+            Self::Left(_) => false,
+            #[either]
+            Self::Right(_) => false,
+            #[neither]
+            Self::Neither => true,
+            #[both]
+            Self::Both(_, _) => false,
+        }
+    }
 
-            pub fn is_neither(&self) -> bool {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(_) => false,
-                    @either => Self::Right(_) => false,
-                    @neither => Self::Neither => true,
-                    @both => Self::Both(_, _) => false,
-                })
-            }
-
-            pub fn is_both(&self) -> bool {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(_) => false,
-                    @either => Self::Right(_) => false,
-                    @neither => Self::Neither => false,
-                    @both => Self::Both(_, _) => true,
-                })
-            }
-        });
-    };
+    pub fn is_both(&self) -> bool {
+        match self {
+            #[either]
+            Self::Left(_) => false,
+            #[either]
+            Self::Right(_) => false,
+            #[neither]
+            Self::Neither => false,
+            #[both]
+            Self::Both(_, _) => true,
+        }
+    }
+    pub fn flip(self) -> Enb<R, L> {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Right(l),
+            #[either]
+            Self::Right(r) => Enb::Left(r),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(r, l),
+        }
+    }
 }
 
 macro_rules! impl_flip {
-    (false, false, false) => { /* Does not allow `!` because we cannot implement `!` types. */ };
+    (false, false, false) => {
+        /* Does not allow `!` because we cannot implement `!` types. */
+    };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            pub fn flip(self) -> pair_type!($has_e, $has_n, $has_b, R, L) {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Right(l),
-                    @either => Self::Right(r) => Left(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(r, l),
-                })
-            }
-        });
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
     };
 }
 
@@ -597,7 +601,6 @@ macro_rules! impl_ensure {
     };
 }
 
-apply_impl_to_all_variants!(impl_is_checkers);
 apply_impl_to_all_variants!(impl_flip);
 apply_impl_to_all_variants!(impl_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);

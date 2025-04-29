@@ -18,7 +18,7 @@ use ::quote::quote;
 use ::syn::visit_mut::{VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_path_mut};
 use ::syn::{
     BinOp, Expr, ExprBinary, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident, ImplItem,
-    ItemImpl, Path, PathArguments, Type, TypePath, UnOp, parse_macro_input,
+    ItemImpl, Path, PathArguments, PathSegment, Type, TypePath, UnOp, parse_macro_input,
 };
 
 #[proc_macro_attribute]
@@ -74,55 +74,11 @@ impl VisitMut for CodeProcessor {
         // Recursively visit the path, do replacements in inner paths first.
         visit_path_mut(self, node);
 
-        let Some(last_segment) = node.segments.last_mut() else {
-            return;
-        };
-
         // Type `Enb<L, R>` or `Enb<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
-        if last_segment.ident == "Enb" {
-            let PathArguments::AngleBracketed(syn_args) = &mut last_segment.arguments else {
-                return;
-            };
-            let args = syn_args.args.clone().into_pairs().collect::<Vec<_>>();
-            let bool_args = if args.len() == 5 {
-                let Some(has_either) = generic_argument_as_a_bool(&args[2].value()) else {
-                    return;
-                };
-                let Some(has_neither) = generic_argument_as_a_bool(&args[3].value()) else {
-                    return;
-                };
-                let Some(has_both) = generic_argument_as_a_bool(&args[4].value()) else {
-                    return;
-                };
-                (has_either, has_neither, has_both)
-            } else if args.len() == 2 {
-                (self.has_either, self.has_neither, self.has_both)
-            } else {
-                return;
-            };
-            let new_ident = match bool_args {
-                (true, true, true) => "EitherOrNeitherOrBoth",
-                (true, true, false) => "EitherOrNeither",
-                (true, false, true) => "EitherOrBoth",
-                (true, false, false) => "Either",
-                (false, true, true) => "NeitherOrBoth",
-                (false, true, false) => "Neither",
-                (false, false, true) => "Both",
-                (false, false, false) => {
-                    return;
-                }
-            };
-            last_segment.ident = Ident::new(new_ident, last_segment.ident.span());
-            if bool_args == (false, true, false) {
-                // For `Neither` type, we need to remove the `<L, R>` arguments.
-                last_segment.arguments = PathArguments::None
-            } else {
-                // For other types, we need to keep the `<L, R>` arguments, but remove the
-                // `<has_either, has_neither, has_both>` arguments if available.
-                while syn_args.args.len() > 2 {
-                    syn_args.args.pop();
-                }
+        for segment in node.segments.iter_mut() {
+            if segment.ident == "Enb" {
+                self.replace_enb_path_segment(segment);
             }
         }
     }
@@ -159,6 +115,58 @@ impl VisitMut for CodeProcessor {
 }
 
 impl CodeProcessor {
+    fn replace_enb_path_segment(&mut self, segment: &mut PathSegment) {
+        let args = match &mut segment.arguments {
+            PathArguments::AngleBracketed(syn_args) => {
+                syn_args.args.clone().into_pairs().collect::<Vec<_>>()
+            }
+            PathArguments::None => Vec::new(),
+            _ => return,
+        };
+        let bool_args = if args.len() == 5 {
+            let Some(has_either) = generic_argument_as_a_bool(&args[2].value()) else {
+                return;
+            };
+            let Some(has_neither) = generic_argument_as_a_bool(&args[3].value()) else {
+                return;
+            };
+            let Some(has_both) = generic_argument_as_a_bool(&args[4].value()) else {
+                return;
+            };
+            (has_either, has_neither, has_both)
+        } else if args.len() == 2 || args.len() == 0 {
+            (self.has_either, self.has_neither, self.has_both)
+        } else {
+            return;
+        };
+        let new_ident = match bool_args {
+            (true, true, true) => "EitherOrNeitherOrBoth",
+            (true, true, false) => "EitherOrNeither",
+            (true, false, true) => "EitherOrBoth",
+            (true, false, false) => "Either",
+            (false, true, true) => "NeitherOrBoth",
+            (false, true, false) => "Neither",
+            (false, false, true) => "Both",
+            (false, false, false) => {
+                return;
+            }
+        };
+        segment.ident = Ident::new(new_ident, segment.ident.span());
+        if bool_args == (false, true, false) {
+            // For `Neither` type, we need to remove the `<L, R>` arguments.
+            segment.arguments = PathArguments::None
+        } else if let PathArguments::AngleBracketed(syn_args) = &mut segment.arguments {
+            // For other types, we need to keep the `<L, R>` arguments, but remove the
+            // `<has_either, has_neither, has_both>` arguments if available.
+            while syn_args.args.len() > 2 {
+                syn_args.args.pop();
+            }
+            if syn_args.args.is_empty() {
+                segment.arguments = PathArguments::None
+            }
+        }
+    }
+
     fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
         let attr_path = attr.meta.path();
         if path_is_an_ident(&attr_path, "either") {
