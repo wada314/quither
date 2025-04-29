@@ -130,7 +130,7 @@ impl VisitMut for CodeProcessor {
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
         visit_item_impl_mut(self, item_impl);
 
-        let _ = find_and_remove_vec_mut(&mut item_impl.items, |item| {
+        let _ = find_first_and_remove_vec_mut(&mut item_impl.items, |item| {
             let attr_vec = match item {
                 ImplItem::Fn(item_fn) => &mut item_fn.attrs,
                 ImplItem::Const(item_const) => &mut item_const.attrs,
@@ -139,7 +139,7 @@ impl VisitMut for CodeProcessor {
                 _ => return Some(()),
             };
             let enb_attr_result =
-                find_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr));
+                find_first_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr));
             match enb_attr_result {
                 Some(true) => None,
                 Some(false) => Some(()), // Remove the item if the attribute is false.
@@ -150,9 +150,10 @@ impl VisitMut for CodeProcessor {
 
     fn visit_expr_match_mut(&mut self, ma: &mut syn::ExprMatch) {
         visit_expr_match_mut(self, ma);
-        let _ = find_and_remove_vec_mut(&mut ma.arms, |arm| {
+        ma.arms.retain_mut(|arm| {
             let attr_vec = &mut arm.attrs;
-            find_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr))
+            find_first_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr))
+                .unwrap_or(true)
         });
     }
 }
@@ -208,7 +209,7 @@ impl CodeProcessor {
     }
 }
 
-fn find_and_remove_vec_mut<T, U, F>(vec: &mut Vec<T>, f: F) -> Option<U>
+fn find_first_and_remove_vec_mut<T, U, F>(vec: &mut Vec<T>, f: F) -> Option<U>
 where
     F: Fn(&mut T) -> Option<U>,
 {
