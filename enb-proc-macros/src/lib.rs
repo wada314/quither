@@ -16,7 +16,8 @@ use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::{
-    GenericArgument, Ident, ItemImpl, Path, PathArguments, Type, TypePath, parse_macro_input,
+    BinOp, Expr, ExprBinary, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident, ImplItem,
+    ItemImpl, Path, PathArguments, Type, TypePath, UnOp, parse_macro_input,
     visit_mut::{VisitMut, visit_path_mut},
 };
 
@@ -47,7 +48,7 @@ fn expand_enb(
     has_neither: bool,
     has_both: bool,
 ) -> TokenStream2 {
-    let mut replacer = PathReplacer {
+    let mut replacer = CodeProcessor {
         has_either,
         has_neither,
         has_both,
@@ -62,13 +63,13 @@ fn expand_enb(
     quote! { #input }
 }
 
-struct PathReplacer {
+struct CodeProcessor {
     has_either: bool,
     has_neither: bool,
     has_both: bool,
 }
 
-impl VisitMut for PathReplacer {
+impl VisitMut for CodeProcessor {
     fn visit_path_mut(&mut self, node: &mut Path) {
         // Recursively visit the path, do replacements in inner paths first.
         visit_path_mut(self, node);
@@ -125,6 +126,89 @@ impl VisitMut for PathReplacer {
             }
         }
     }
+
+    fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
+        let _ = find_and_remove_vec_mut(&mut item_impl.items, |item| {
+            let attr_vec = match item {
+                ImplItem::Fn(item_fn) => &mut item_fn.attrs,
+                ImplItem::Const(item_const) => &mut item_const.attrs,
+                ImplItem::Type(item_type) => &mut item_type.attrs,
+                ImplItem::Macro(item_macro) => &mut item_macro.attrs,
+                _ => return Some(()),
+            };
+            let enb_attr_result =
+                find_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr));
+            match enb_attr_result {
+                Some(true) => None,
+                Some(false) => Some(()), // Remove the item if the attribute is false.
+                None => None,
+            }
+        });
+    }
+}
+
+impl CodeProcessor {
+    fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
+        let attr_path = attr.meta.path();
+        if path_is_an_ident(&attr_path, "either") {
+            return Some(self.has_either);
+        } else if path_is_an_ident(&attr_path, "neither") {
+            return Some(self.has_neither);
+        } else if path_is_an_ident(&attr_path, "both") {
+            return Some(self.has_both);
+        } else if path_is_an_ident(&attr_path, "enb") {
+            return self.check_enb_attr_condition(&attr.parse_args().ok()?);
+        } else {
+            return None;
+        }
+    }
+
+    fn check_enb_attr_condition(&self, args: &Expr) -> Option<bool> {
+        match args {
+            Expr::Binary(ExprBinary {
+                left, right, op, ..
+            }) => {
+                let left = self.check_enb_attr_condition(left)?;
+                let right = self.check_enb_attr_condition(right)?;
+                match op {
+                    BinOp::And(_) => Some(left && right),
+                    BinOp::Or(_) => Some(left || right),
+                    _ => None,
+                }
+            }
+            Expr::Unary(ExprUnary {
+                expr,
+                op: UnOp::Not(_),
+                ..
+            }) => self.check_enb_attr_condition(expr),
+            Expr::Paren(ExprParen { expr, .. }) => self.check_enb_attr_condition(expr),
+            Expr::Path(ExprPath { path, .. }) => {
+                if path_is_an_ident(path, "has_either") {
+                    Some(self.has_either)
+                } else if path_is_an_ident(path, "has_neither") {
+                    Some(self.has_neither)
+                } else if path_is_an_ident(path, "has_both") {
+                    Some(self.has_both)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
+fn find_and_remove_vec_mut<T, U, F>(vec: &mut Vec<T>, f: F) -> Option<U>
+where
+    F: Fn(&mut T) -> Option<U>,
+{
+    for (i, item) in vec.iter_mut().enumerate() {
+        if let Some(u) = f(item) {
+            vec.remove(i);
+            return Some(u);
+        }
+    }
+    None
 }
 
 fn path_is_an_ident(path: &Path, ident: &str) -> bool {
