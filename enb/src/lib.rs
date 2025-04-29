@@ -227,91 +227,135 @@ impl<L, R> Enb<L, R> {
             Self::Both(_, _) => None,
         }
     }
+
+    /// Apply the function `f` on the value in the left position if it is present,
+    /// and then rewrap the result in a same variant of the new type.
+    #[enb(has_either || has_both)]
+    pub fn left_and_then<F, L2>(self, f: F) -> Enb<L2, R>
+    where
+        F: FnOnce(L) -> Enb<L2, R>,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => f(l),
+            #[either]
+            Self::Right(r) => Enb::Right(r),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, _) => f(l),
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
+        match self {
+            #[either]
+            Self::Left(l2) => (l2, r),
+            #[either]
+            Self::Right(r2) => (l, r2),
+            #[neither]
+            Self::Neither => (l, r),
+            #[both]
+            Self::Both(l2, r2) => (l2, r2),
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn or_default(self) -> (L, R)
+    where
+        L: Default,
+        R: Default,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => (l, R::default()),
+            #[either]
+            Self::Right(r) => (L::default(), r),
+            #[neither]
+            Self::Neither => (L::default(), R::default()),
+            #[both]
+            Self::Both(l, r) => (l, r),
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
+    where
+        F: FnOnce() -> L,
+        G: FnOnce() -> R,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => (l, g()),
+            #[either]
+            Self::Right(r) => (f(), r),
+            #[neither]
+            Self::Neither => (f(), g()),
+            #[both]
+            Self::Both(l, r) => (l, r),
+        }
+    }
+
+    /// Return left value or given value.
+    #[enb(has_either || has_both)]
+    pub fn left_or(self, #[allow(unused)] other: L) -> L {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(_) => other,
+            #[neither]
+            Self::Neither => other,
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
+
+    /// Return left value or default value.
+    #[enb(has_either || has_both)]
+    pub fn left_or_default(self) -> L
+    where
+        L: Default,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(_) => L::default(),
+            #[neither]
+            Self::Neither => L::default(),
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
+
+    /// Return left value or computes it from a closure.
+    #[enb(has_either || has_both)]
+    pub fn left_or_else<F>(self, #[allow(unused)] f: F) -> L
+    where
+        F: FnOnce() -> L,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(_) => f(),
+            #[neither]
+            Self::Neither => f(),
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
 }
 
 // impl for 'or' and 'and' operations.
 macro_rules! impl_and_or_methods {
     (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// Apply the function `f` on the value in the left position if it is present,
-            /// and then rewrap the result in a same variant of the new type.
-            pub fn left_and_then<F, L2>(self, f: F) -> pair_type!($has_e, $has_n, $has_b, L2, R)
-            where
-                F: FnOnce(L) -> pair_type!($has_e, $has_n, $has_b, L2, R),
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => f(l),
-                    @either => Self::Right(r) => Right(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, _) => f(l),
-                })
-            }
-
-            pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l2) => (l2, r),
-                    @either => Self::Right(r2) => (l, r2),
-                    @neither => Self::Neither => (l, r),
-                    @both => Self::Both(l2, r2) => (l2, r2),
-                })
-            }
-
-            pub fn or_default(self) -> (L, R) where L: Default, R: Default {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => (l, R::default()),
-                    @either => Self::Right(r) => (L::default(), r),
-                    @neither => Self::Neither => (L::default(), R::default()),
-                    @both => Self::Both(l, r) => (l, r),
-                })
-            }
-
-            pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
-            where
-                F: FnOnce() -> L,
-                G: FnOnce() -> R,
-            {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => (l, g()),
-                    @either => Self::Right(r) => (f(), r),
-                    @neither => Self::Neither => (f(), g()),
-                    @both => Self::Both(l, r) => (l, r),
-                })
-            }
-
-            /// Return left value or given value.
-            pub fn left_or(self, #[allow(unused)] other: L) -> L {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => other,
-                    @neither => Self::Neither => other,
-                    @both => Self::Both(l, _) => l,
-                })
-            }
-
-            /// Return left value or default value.
-            pub fn left_or_default(self) -> L where L: Default {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => L::default(),
-                    @neither => Self::Neither => L::default(),
-                    @both => Self::Both(l, _) => l,
-                })
-            }
-
-            /// Return left value or computes it from a closure.
-            pub fn left_or_else<F>(self, #[allow(unused)] f: F) -> L where F: FnOnce() -> L {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => f(),
-                    @neither => Self::Neither => f(),
-                    @both => Self::Both(l, _) => l,
-                })
-            }
-        });
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
     };
 }
 
