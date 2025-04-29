@@ -417,6 +417,82 @@ impl<L, R> Enb<L, R> {
             Self::Both(l, r) => Enb::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
         }
     }
+
+    /// Creates a new variant with references to the contained values.
+    #[enb(has_either || has_neither || has_both)]
+    pub fn as_ref(&self) -> Enb<&L, &R> {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(l),
+            #[either]
+            Self::Right(r) => Enb::Right(r),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(l, r),
+        }
+    }
+
+    /// Creates a new variant with mutable references to the contained values.
+    #[enb(has_either || has_neither || has_both)]
+    pub fn as_mut(&mut self) -> Enb<&mut L, &mut R> {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(l),
+            #[either]
+            Self::Right(r) => Enb::Right(r),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(l, r),
+        }
+    }
+
+    /// Creates a new pinned variant with references to the contained values.
+    #[enb(has_either || has_neither || has_both)]
+    pub fn as_pin_ref(self: Pin<&Self>) -> Enb<Pin<&L>, Pin<&R>> {
+        // SAFETY: This is safe because:
+        // 1. We never move the inner values - we only create a new reference to them
+        // 2. The original Pin<&Self> guarantees that the original data won't move
+        // 3. We're maintaining the pinning invariant by wrapping the references in Pin
+        // 4. The lifetime of the output references is tied to the input lifetime
+        #[allow(unused)]
+        unsafe {
+            match self.get_ref() {
+                #[either]
+                Self::Left(l) => Enb::Left(Pin::new_unchecked(l)),
+                #[either]
+                Self::Right(r) => Enb::Right(Pin::new_unchecked(r)),
+                #[neither]
+                Self::Neither => Enb::Neither,
+                #[both]
+                Self::Both(l, r) => Enb::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+            }
+        }
+    }
+
+    /// Creates a new pinned variant with mutable references to the contained values.
+    #[enb(has_either || has_neither || has_both)]
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Enb<Pin<&mut L>, Pin<&mut R>> {
+        // SAFETY: This is safe because:
+        // 1. We never move the inner values out of the pin
+        // 2. We're creating new Pin instances from references to pinned data
+        // 3. The original Pin<&mut Self> guarantees unique access
+        // 4. We maintain the pinning invariant by wrapping the mutable references in Pin
+        // 5. get_unchecked_mut is safe here as we have exclusive access via Pin<&mut Self>
+        unsafe {
+            match self.get_unchecked_mut() {
+                #[either]
+                Self::Left(l) => Enb::Left(Pin::new_unchecked(l)),
+                #[either]
+                Self::Right(r) => Enb::Right(Pin::new_unchecked(r)),
+                #[neither]
+                Self::Neither => Enb::Neither,
+                #[both]
+                Self::Both(l, r) => Enb::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+            }
+        }
+    }
 }
 
 // impl for 'or' and 'and' operations.
@@ -432,71 +508,11 @@ macro_rules! impl_and_or_methods {
 // impl for as_ref / as_mut.
 macro_rules! impl_as_ref {
     (false, false, false) => {
-         /* Does not allow `!` type because it is not allowed to implement `!` type. */
+        /* Does not allow `!` type because it is not allowed to implement `!` type. */
     };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// Creates a new variant with references to the contained values.
-            pub fn as_ref(&self) -> pair_type!($has_e, $has_n, $has_b, &L, &R) {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(l),
-                    @either => Self::Right(r) => Right(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(l, r),
-                })
-            }
-
-            /// Creates a new variant with mutable references to the contained values.
-            pub fn as_mut(&mut self) -> pair_type!($has_e, $has_n, $has_b, &mut L, &mut R) {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(l),
-                    @either => Self::Right(r) => Right(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(l, r),
-                })
-            }
-
-            /// Creates a new pinned variant with references to the contained values.
-            pub fn as_pin_ref(self: Pin<&Self>) -> pair_type!($has_e, $has_n, $has_b, Pin<&L>, Pin<&R>) {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                // SAFETY: This is safe because:
-                // 1. We never move the inner values - we only create a new reference to them
-                // 2. The original Pin<&Self> guarantees that the original data won't move
-                // 3. We're maintaining the pinning invariant by wrapping the references in Pin
-                // 4. The lifetime of the output references is tied to the input lifetime
-                #[allow(unused)]
-                unsafe {
-                    match_possible_variants!(self.get_ref(), $has_e, $has_n, $has_b, {
-                        @either => Self::Left(l) => Left(Pin::new_unchecked(l)),
-                        @either => Self::Right(r) => Right(Pin::new_unchecked(r)),
-                        @neither => Self::Neither => Neither,
-                        @both => Self::Both(l, r) => Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
-                    })
-                }
-            }
-
-            /// Creates a new pinned variant with mutable references to the contained values.
-            pub fn as_pin_mut(self: Pin<&mut Self>) -> pair_type!($has_e, $has_n, $has_b, Pin<&mut L>, Pin<&mut R>) {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                // SAFETY: This is safe because:
-                // 1. We never move the inner values out of the pin
-                // 2. We're creating new Pin instances from references to pinned data
-                // 3. The original Pin<&mut Self> guarantees unique access
-                // 4. We maintain the pinning invariant by wrapping the mutable references in Pin
-                // 5. get_unchecked_mut is safe here as we have exclusive access via Pin<&mut Self>
-                unsafe {
-                    match_possible_variants!(self.get_unchecked_mut(), $has_e, $has_n, $has_b, {
-                        @either => Self::Left(l) => Left(Pin::new_unchecked(l)),
-                        @either => Self::Right(r) => Right(Pin::new_unchecked(r)),
-                        @neither => Self::Neither => Neither,
-                        @both => Self::Both(l, r) => Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
-                    })
-                }
-            }
-        });
-    }
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
+    };
 }
 
 // impl for as_deref / as_deref_mut.
