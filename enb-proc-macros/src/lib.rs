@@ -199,7 +199,7 @@ impl CodeProcessor {
                 expr,
                 op: UnOp::Not(_),
                 ..
-            }) => self.check_enb_attr_condition(expr),
+            }) => self.check_enb_attr_condition(expr).map(|b| !b),
             Expr::Paren(ExprParen { expr, .. }) => self.check_enb_attr_condition(expr),
             Expr::Path(ExprPath { path, .. }) => {
                 if path_is_an_ident(path, "has_either") {

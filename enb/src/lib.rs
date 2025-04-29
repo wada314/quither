@@ -347,6 +347,76 @@ impl<L, R> Enb<L, R> {
             Self::Both(l, _) => l,
         }
     }
+
+    #[enb(has_either || has_both)]
+    pub fn map<F, G, L2, R2>(self, f: F, g: G) -> Enb<L2, R2>
+    where
+        F: FnOnce(L) -> L2,
+        G: FnOnce(R) -> R2,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(f(l)),
+            #[either]
+            Self::Right(r) => Enb::Right(g(r)),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(f(l), g(r)),
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn map_left<F, L2>(self, f: F) -> Enb<L2, R>
+    where
+        F: FnOnce(L) -> L2,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(f(l)),
+            #[either]
+            Self::Right(r) => Enb::Right(r),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(f(l), r),
+        }
+    }
+
+    #[enb(has_either && !has_both)]
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Enb<L2, R2>
+    where
+        F: FnOnce(Ctx, L) -> L2,
+        G: FnOnce(Ctx, R) -> R2,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(f(ctx, l)),
+            #[either]
+            Self::Right(r) => Enb::Right(g(ctx, r)),
+            #[neither]
+            Self::Neither => Enb::Neither,
+        }
+    }
+
+    #[enb(has_either && has_both)]
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Enb<L2, R2>
+    where
+        Ctx: Clone,
+        F: FnOnce(Ctx, L) -> L2,
+        G: FnOnce(Ctx, R) -> R2,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(f(ctx, l)),
+            #[either]
+            Self::Right(r) => Enb::Right(g(ctx, r)),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
+        }
+    }
 }
 
 // impl for 'or' and 'and' operations.
@@ -492,87 +562,17 @@ macro_rules! impl_into_left_right {
     };
 }
 
-macro_rules! impl_map {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            pub fn map<F, G, L2, R2>(self, f: F, g: G)
-                -> pair_type!($has_e, $has_n, $has_b, L2, R2)
-            where
-                F: FnOnce(L) -> L2,
-                G: FnOnce(R) -> R2,
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(f(l)),
-                    @either => Self::Right(r) => Right(g(r)),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(f(l), g(r)),
-                })
-            }
-
-            /// Apply the function `f` on the value in the left position if it is present,
-            /// and then rewrap the result in a same variant of the new type.
-            pub fn map_left<F, L2>(self, f: F) -> pair_type!($has_e, $has_n, $has_b, L2, R)
-            where
-                F: FnOnce(L) -> L2,
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(f(l)),
-                    @either => Self::Right(r) => Right(r),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(f(l), r),
-                })
-            }
-        });
-    };
-}
-
 macro_rules! impl_map_with {
     (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
     // The case not including `Both` variant. Then the `Ctx` is not required to be `Clone`.
     ($has_e:ident, $has_n:ident, false) => {
-        impl_pair_type!($has_e, $has_n, false, L, R, {
-            pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G)
-                -> pair_type!($has_e, $has_n, false, L2, R2)
-            where
-                F: FnOnce(Ctx, L) -> L2,
-                G: FnOnce(Ctx, R) -> R2,
-            {
-                use_pair_variants!($has_e, $has_n, false);
-                match_possible_variants!(self, $has_e, $has_n, false, {
-                    @either => Self::Left(l) => Left(f(ctx, l)),
-                    @either => Self::Right(r) => Right(g(ctx, r)),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => unreachable!(),
-                })
-            }
-        });
+        impl_pair_type!($has_e, $has_n, false, L, R, {});
     };
     // The case including `Both` variant. Then the `Ctx` is required to be `Clone`.
     ($has_e:ident, $has_n:ident, true) => {
-        impl_pair_type!($has_e, $has_n, true, L, R, {
-            pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G)
-                -> pair_type!($has_e, $has_n, true, L2, R2)
-            where
-                Ctx: Clone,
-                F: FnOnce(Ctx, L) -> L2,
-                G: FnOnce(Ctx, R) -> R2,
-            {
-                use_pair_variants!($has_e, $has_n, true);
-                match_possible_variants!(self, $has_e, $has_n, true, {
-                    @either => Self::Left(l) => Left(f(ctx.clone(), l)),
-                    @either => Self::Right(r) => Right(g(ctx.clone(), r)),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(f(ctx.clone(), l), g(ctx.clone(), r)),
-                })
-            }
-        });
+        impl_pair_type!($has_e, $has_n, true, L, R, {});
     };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
         /* empty for other cases. */
@@ -666,7 +666,6 @@ apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_as_ref);
 apply_impl_to_all_variants!(impl_as_deref);
 apply_impl_to_all_variants!(impl_into_left_right);
-apply_impl_to_all_variants!(impl_map);
 apply_impl_to_all_variants!(impl_map_with);
 apply_impl_to_all_variants!(impl_ensure);
 
