@@ -21,41 +21,41 @@ use ::enb_proc_macros::enb;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
-pub enum Either<A, B> {
-    Left(A),
-    Right(B),
+pub enum Either<L, R> {
+    Left(L),
+    Right(R),
 }
 
 pub enum Neither {
     Neither,
 }
 
-pub enum Both<A, B> {
-    Both(A, B),
+pub enum Both<L, R> {
+    Both(L, R),
 }
 
-pub enum EitherOrNeither<A, B> {
-    Left(A),
-    Right(B),
+pub enum EitherOrNeither<L, R> {
     Neither,
+    Left(L),
+    Right(R),
 }
 
-pub enum EitherOrBoth<A, B> {
-    Left(A),
-    Right(B),
-    Both(A, B),
+pub enum EitherOrBoth<L, R> {
+    Left(L),
+    Right(R),
+    Both(L, R),
 }
 
-pub enum NeitherOrBoth<A, B> {
+pub enum NeitherOrBoth<L, R> {
     Neither,
-    Both(A, B),
+    Both(L, R),
 }
 
-pub enum EitherOrNeitherOrBoth<A, B> {
-    Left(A),
-    Right(B),
+pub enum EitherOrNeitherOrBoth<L, R> {
     Neither,
-    Both(A, B),
+    Left(L),
+    Right(R),
+    Both(L, R),
 }
 
 #[enb]
