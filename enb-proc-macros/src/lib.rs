@@ -17,8 +17,9 @@ use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::visit_mut::{VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_path_mut};
 use ::syn::{
-    BinOp, Expr, ExprBinary, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident, ImplItem,
-    ItemImpl, Path, PathArguments, PathSegment, Type, TypePath, UnOp, parse_macro_input,
+    BinOp, Expr, ExprBinary, ExprLit, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident,
+    ImplItem, ItemImpl, Lit, LitBool, Path, PathArguments, PathSegment, Type, TypePath, UnOp,
+    parse_macro_input,
 };
 
 #[proc_macro_attribute]
@@ -81,6 +82,8 @@ impl VisitMut for CodeProcessor {
                 self.replace_enb_path_segment(segment);
             }
         }
+
+        self.replace_has_enb_path(node);
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
@@ -167,6 +170,23 @@ impl CodeProcessor {
         }
     }
 
+    fn replace_has_enb_path(&mut self, path: &mut Path) {
+        let Some(ident) = path.get_ident() else {
+            return;
+        };
+        if ident == "has_either" {
+            *path = Ident::new(if self.has_either { "true" } else { "false" }, ident.span()).into();
+        } else if ident == "has_neither" {
+            *path = Ident::new(
+                if self.has_neither { "true" } else { "false" },
+                ident.span(),
+            )
+            .into();
+        } else if ident == "has_both" {
+            *path = Ident::new(if self.has_both { "true" } else { "false" }, ident.span()).into();
+        }
+    }
+
     fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
         let attr_path = attr.meta.path();
         if path_is_an_ident(&attr_path, "either") {
@@ -243,15 +263,27 @@ fn path_is_an_ident(path: &Path, ident: &str) -> bool {
     first_segment.ident == ident && first_segment.arguments.is_empty()
 }
 
-fn type_path_is_an_ident(path: &TypePath, ident: &str) -> bool {
-    path.qself.is_none() && path_is_an_ident(&path.path, ident)
-}
-
-fn generic_argument_is_an_ident(arg: &GenericArgument, ident: &str) -> bool {
-    let GenericArgument::Type(Type::Path(path)) = arg else {
-        return false;
-    };
-    type_path_is_an_ident(path, ident)
+fn generic_argument_is_an_ident(arg: &GenericArgument, expected_ident: &str) -> bool {
+    match arg {
+        GenericArgument::Type(Type::Path(TypePath {
+            path, qself: None, ..
+        })) => {
+            let Some(ident) = path.get_ident() else {
+                return false;
+            };
+            ident == expected_ident
+        }
+        GenericArgument::Const(Expr::Lit(ExprLit { lit, .. })) => {
+            let Lit::Bool(LitBool { value, .. }) = lit else {
+                return false;
+            };
+            match value {
+                true => expected_ident == "true",
+                false => expected_ident == "false",
+            }
+        }
+        _ => false,
+    }
 }
 
 fn generic_argument_as_a_bool(arg: &GenericArgument) -> Option<bool> {

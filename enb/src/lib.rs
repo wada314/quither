@@ -790,6 +790,26 @@ impl<L, R> Enb<L, R> {
     }
 }
 
+#[enb]
+impl<L, R> Enb<Option<L>, Option<R>> {
+    #[enb(has_either || has_both)]
+    pub fn factor_none(self) -> Option<Enb<L, R, true, false, has_both>> {
+        todo!()
+    }
+}
+
+// impl<L, R> Either<Option<L>, Option<R>> {
+//     /// Factor out the `None` values from the variant.
+//     pub fn factor_none(self) -> Option<Either<L, R>> {
+//         match self {
+//             Either::Left(Some(l)) => Some(Either::Left(l)),
+//             Either::Left(None) => None,
+//             Either::Right(Some(r)) => Some(Either::Right(r)),
+//             Either::Right(None) => None,
+//         }
+//     }
+// }
+
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
     where
