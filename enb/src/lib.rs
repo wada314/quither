@@ -792,17 +792,25 @@ impl<L, R> Enb<L, R> {
 
 #[enb]
 impl<L, R> Enb<Option<L>, Option<R>> {
-    #[enb(has_either || has_both)]
+    #[enb(!has_neither && (has_either || has_both))]
     pub fn factor_none(self) -> Option<Enb<L, R, true, false, has_both>> {
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Enb::Left(l)),
+            Self::Left(Some(l)) => Some(Enb::<L, R, true, false, has_both>::Left(l)),
             #[either]
-            Self::Right(Some(r)) => Some(Enb::Right(r)),
-            #[neither]
-            Self::Neither => Some(Enb::Neither),
+            Self::Left(None) => None,
+            #[either]
+            Self::Right(Some(r)) => Some(Enb::<L, R, true, false, has_both>::Right(r)),
+            #[either]
+            Self::Right(None) => None,
             #[both]
-            Self::Both(l, r) => Some(Enb::Both(l, r)),
+            Self::Both(Some(l), Some(r)) => Some(Enb::<L, R, true, false, has_both>::Both(l, r)),
+            #[both]
+            Self::Both(Some(l), None) => Some(Enb::<L, R, true, false, has_both>::Left(l)),
+            #[both]
+            Self::Both(None, Some(r)) => Some(Enb::<L, R, true, false, has_both>::Right(r)),
+            #[both]
+            Self::Both(None, None) => None,
         }
     }
 }
