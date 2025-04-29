@@ -202,6 +202,28 @@ impl<L, R> Enb<L, R> {
         }
     }
 
+    /// Unwrap the right value from the variant.
+    ///
+    /// # Panics
+    ///
+    /// - If the variant is something not containing a right value.
+    #[enb(has_either || has_both)]
+    pub fn unwrap_right(self) -> R
+    where
+        L: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => panic!("Expected a Right variant, but got a left value:{:?}", l),
+            #[either]
+            Self::Right(r) => r,
+            #[neither]
+            Self::Neither => panic!("Expected a Right variant, but got a Neither variant"),
+            #[both]
+            Self::Both(_, r) => r,
+        }
+    }
+
     /// Unwrap the left value from the variant.
     ///
     /// # Panics
@@ -221,6 +243,28 @@ impl<L, R> Enb<L, R> {
             Self::Neither => panic!("{}", msg),
             #[both]
             Self::Both(l, _) => l,
+        }
+    }
+
+    /// Unwrap the right value from the variant.
+    ///
+    /// # Panics
+    ///
+    /// - If the variant is something not containing a right value.
+    #[enb(has_either || has_both)]
+    pub fn expect_right(self, #[allow(unused)] msg: &str) -> R
+    where
+        L: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => panic!("{}: {:?}", msg, l),
+            #[either]
+            Self::Right(r) => r,
+            #[neither]
+            Self::Neither => panic!("{}", msg),
+            #[both]
+            Self::Both(_, r) => r,
         }
     }
 
@@ -725,6 +769,23 @@ impl<L, R> Enb<L, R> {
             Self::Neither => unreachable!(),
             #[both]
             Self::Both(l, _) => l,
+        }
+    }
+
+    #[enb(!has_neither)]
+    pub fn into_right(self) -> R
+    where
+        L: Into<R>,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l.into(),
+            #[either]
+            Self::Right(r) => r,
+            #[neither]
+            Self::Neither => unreachable!(),
+            #[both]
+            Self::Both(_, r) => r,
         }
     }
 }
