@@ -493,6 +493,44 @@ impl<L, R> Enb<L, R> {
             }
         }
     }
+
+    /// Returns a new value using the `Deref` trait for `L` and `R` values.
+    #[enb(has_either || has_both)]
+    pub fn as_deref(&self) -> Enb<&L::Target, &R::Target>
+    where
+        L: Deref,
+        R: Deref,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(l.deref()),
+            #[either]
+            Self::Right(r) => Enb::Right(r.deref()),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(l.deref(), r.deref()),
+        }
+    }
+
+    /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
+    #[enb(has_either || has_both)]
+    pub fn as_deref_mut(&mut self) -> Enb<&mut L::Target, &mut R::Target>
+    where
+        L: DerefMut,
+        R: DerefMut,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Enb::Left(l.deref_mut()),
+            #[either]
+            Self::Right(r) => Enb::Right(r.deref_mut()),
+            #[neither]
+            Self::Neither => Enb::Neither,
+            #[both]
+            Self::Both(l, r) => Enb::Both(l.deref_mut(), r.deref_mut()),
+        }
+    }
 }
 
 // impl for 'or' and 'and' operations.
@@ -518,40 +556,10 @@ macro_rules! impl_as_ref {
 // impl for as_deref / as_deref_mut.
 macro_rules! impl_as_deref {
     (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
+        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
     };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// Returns a new value using the `Deref` trait for `L` and `R` values.
-            pub fn as_deref(&self) -> pair_type!($has_e, $has_n, $has_b, &L::Target, &R::Target)
-            where
-                L: Deref,
-                R: Deref,
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(l.deref()),
-                    @either => Self::Right(r) => Right(r.deref()),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(l.deref(), r.deref()),
-                })
-            }
-
-            /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
-            pub fn as_deref_mut(&mut self) -> pair_type!($has_e, $has_n, $has_b, &mut L::Target, &mut R::Target)
-            where
-                L: DerefMut,
-                R: DerefMut,
-            {
-                use_pair_variants!($has_e, $has_n, $has_b);
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Left(l.deref_mut()),
-                    @either => Self::Right(r) => Right(r.deref_mut()),
-                    @neither => Self::Neither => Neither,
-                    @both => Self::Both(l, r) => Both(l.deref_mut(), r.deref_mut()),
-                })
-            }
-        });
+        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
     };
 }
 
