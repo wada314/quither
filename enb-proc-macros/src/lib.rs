@@ -15,10 +15,10 @@
 use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
+use ::syn::visit_mut::{VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_path_mut};
 use ::syn::{
     BinOp, Expr, ExprBinary, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident, ImplItem,
     ItemImpl, Path, PathArguments, Type, TypePath, UnOp, parse_macro_input,
-    visit_mut::{VisitMut, visit_path_mut},
 };
 
 #[proc_macro_attribute]
@@ -128,6 +128,8 @@ impl VisitMut for CodeProcessor {
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
+        visit_item_impl_mut(self, item_impl);
+
         let _ = find_and_remove_vec_mut(&mut item_impl.items, |item| {
             let attr_vec = match item {
                 ImplItem::Fn(item_fn) => &mut item_fn.attrs,
@@ -143,6 +145,14 @@ impl VisitMut for CodeProcessor {
                 Some(false) => Some(()), // Remove the item if the attribute is false.
                 None => None,
             }
+        });
+    }
+
+    fn visit_expr_match_mut(&mut self, ma: &mut syn::ExprMatch) {
+        visit_expr_match_mut(self, ma);
+        let _ = find_and_remove_vec_mut(&mut ma.arms, |arm| {
+            let attr_vec = &mut arm.attrs;
+            find_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr))
         });
     }
 }

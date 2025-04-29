@@ -66,20 +66,30 @@ impl<L, R> Enb<L, R> {
     pub fn hello(&self) {
         println!("hello");
     }
+
+    #[enb(has_neither)]
+    pub fn yeah(&self) {
+        println!("yeah");
+    }
+
+    pub fn is_left(&self) -> bool {
+        match self {
+            #[either]
+            Self::Left(_) => true,
+            #[either]
+            Self::Right(_) => false,
+            #[neither]
+            Self::Neither => false,
+            #[both]
+            Self::Both(_, _) => true,
+        }
+    }
 }
 
 macro_rules! impl_is_checkers {
     (false, false, false) => { /* Does not allow `!` because we cannot implement `!` types. */ };
     ($has_e:ident, $has_n:ident, $has_b:ident) => {
         impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            pub fn is_left(&self) -> bool {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(_) => true,
-                    @either => Self::Right(_) => false,
-                    @neither => Self::Neither => false,
-                    @both => Self::Both(_, _) => true,
-                })
-            }
 
             pub fn is_neither(&self) -> bool {
                 match_possible_variants!(self, $has_e, $has_n, $has_b, {
