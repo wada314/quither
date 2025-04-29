@@ -21,36 +21,43 @@ use ::enb_proc_macros::enb;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
+/// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) value.
 pub enum Either<L, R> {
     Left(L),
     Right(R),
 }
 
+/// An enum that represents a single `Neither` value.
 pub enum Neither {
     Neither,
 }
 
+/// An enum that represents a pair of values (`Both(L, R)`).
 pub enum Both<L, R> {
     Both(L, R),
 }
 
+/// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) or neither (`Neither`).
 pub enum EitherOrNeither<L, R> {
     Neither,
     Left(L),
     Right(R),
 }
 
+/// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) or both (`Both(L, R)`).
 pub enum EitherOrBoth<L, R> {
     Left(L),
     Right(R),
     Both(L, R),
 }
 
+/// An enum that represents a single `Neither` value or a pair of values (`Both(L, R)`).
 pub enum NeitherOrBoth<L, R> {
     Neither,
     Both(L, R),
 }
 
+/// An enum that represents either an empty value, left value, right value, or both values.
 pub enum EitherOrNeitherOrBoth<L, R> {
     Neither,
     Left(L),
