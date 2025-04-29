@@ -19,9 +19,6 @@ use ::std::pin::Pin;
 
 use ::enb_proc_macros::enb;
 
-#[macro_use]
-mod macros;
-
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
 pub enum Either<A, B> {
@@ -531,167 +528,88 @@ impl<L, R> Enb<L, R> {
             Self::Both(l, r) => Enb::Both(l.deref_mut(), r.deref_mut()),
         }
     }
-}
+    /// Ensure the left value is present. If possible, keep the right value too.
+    ///
+    /// If the left value is already present, do nothing and return the left value.
+    /// If the left value is not present, then:
+    ///   - If it can "promote" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
+    ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
+    /// And set the left value to the given value and return it.
+    #[enb(!has_neither || has_either)]
+    // ↑ means: (has_neither => has_either).
+    // This is needed to do the variant promotion when inserting the left value into `Neither` variant.
+    pub fn ensure_left(&mut self, l: L) -> &mut L {
+        self.ensure_left_with(move || l)
+    }
 
-// impl for 'or' and 'and' operations.
-macro_rules! impl_and_or_methods {
-    (false, $has_n:ident, false) => {
-        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
-    };
-}
-
-// impl for as_ref / as_mut.
-macro_rules! impl_as_ref {
-    (false, false, false) => {
-        /* Does not allow `!` type because it is not allowed to implement `!` type. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
-    };
-}
-
-// impl for as_deref / as_deref_mut.
-macro_rules! impl_as_deref {
-    (false, $has_n:ident, false) => {
-        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
-    };
-}
-
-// impl for into_left, into_right.
-macro_rules! impl_into_left_right {
-    (false, $has_n:ident, false) => {
-        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, false, $has_b:ident) => {
-        /* Only allow the pair type which does not include `Neither` variant. */
-        impl_pair_type!($has_e, false, $has_b, L, R, {
-            pub fn into_left(self) -> L where R: Into<L> {
-                match_possible_variants!(self, $has_e, false, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(r) => r.into(),
-                    @neither => Self::Neither => unreachable!(),
-                    @both => Self::Both(l, _) => l,
-                })
+    /// Ensure the left value is present. If possible, keep the right value too.
+    ///
+    /// If the left value is already present, do nothing and return the left value.
+    /// If the left value is not present, then:
+    ///   - If it can \"promote\" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
+    ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
+    /// And set the left value to the given closure's return value and return it.
+    #[enb(!has_neither || has_either)]
+    pub fn ensure_left_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
+    where
+        F: FnOnce() -> L,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[enb(has_either && has_both)]
+            Self::Right(_) => {
+                // Right => Both promotion.
+                let new_l = f();
+                replace_with_or_abort(self, move |this| {
+                    let Self::Right(r) = this else { unreachable!() };
+                    Self::Both(new_l, r)
+                });
+                let Self::Both(l, _) = self else {
+                    unreachable!()
+                };
+                l
             }
-        });
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        /* empty for other cases. */
-    };
-}
-
-macro_rules! impl_map_with {
-    (false, $has_n:ident, false) => {
-        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    // The case not including `Both` variant. Then the `Ctx` is not required to be `Clone`.
-    ($has_e:ident, $has_n:ident, false) => {
-        impl_pair_type!($has_e, $has_n, false, L, R, {});
-    };
-    // The case including `Both` variant. Then the `Ctx` is required to be `Clone`.
-    ($has_e:ident, $has_n:ident, true) => {
-        impl_pair_type!($has_e, $has_n, true, L, R, {});
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        /* empty for other cases. */
-    };
-}
-
-macro_rules! impl_ensure {
-    (false, $has_n:ident, false) => {
-        /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    (false, true, true) => {
-        /* Does not allow `NeitherOrBoth` variant because nothing we can do for `Neither` variant. */
-    };
-    (true, $has_n:ident, $has_b:ident) => {
-        // If `Neither is enabled, then the `Neither` variant is allowed to be promoted to `Left`.
-        // If `Both` is enabled, then the `Right` variant is allowed to be promoted to `Both`.
-        impl_pair_type!(true, $has_n, $has_b, L, R, {
-            /// Ensure the left value is present. If possible, keep the right value too.
-            ///
-            /// If the left value is already present, do nothing and return the left value.
-            /// If the left value is not present, then:
-            ///   - If it can "promote" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
-            ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
-            /// And set the left value to the given value and return it.
-            pub fn ensure_left(&mut self, l: L) -> &mut L {
-                self.ensure_left_with(move || l)
+            #[enb(has_either && !has_both)]
+            Self::Right(_) => {
+                // No promotion.
+                *self = Self::Left(f());
+                let Self::Left(l) = self else { unreachable!() };
+                l
             }
-
-            /// Ensure the left value is present. If possible, keep the right value too.
-            ///
-            /// If the left value is already present, do nothing and return the left value.
-            /// If the left value is not present, then:
-            ///   - If it can \"promote\" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
-            ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
-            /// And set the left value to the given closure's return value and return it.
-            pub fn ensure_left_with<F>(&mut self, f: F) -> &mut L
-            where
-                F: FnOnce() -> L,
-            {
-                match_possible_variants!(self, true, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(_) => {
-                        macro_if! { $has_b {
-                            // Right => Both promotion.
-                            let new_l = f();
-                            replace_with_or_abort(self, move |this| {
-                                let Self::Right(r) = this else {
-                                    unreachable!()
-                                };
-                                Self::Both(new_l, r)
-                            });
-                            let Self::Both(l, _) = self else {
-                                unreachable!()
-                            };
-                            l
-                        } else {
-                            // No promotion.
-                            *self = Self::Left(f());
-                            let Self::Left(l) = self else {
-                                unreachable!()
-                            };
-                            l
-                        }}
-                    }
-                    @neither => Self::Neither => {
-                        // Neither => Left promotion.
-                        let new_l = f();
-                        replace_with_or_abort(self, move |this| {
-                            let Self::Neither = this else {
-                                unreachable!()
-                            };
-                            Self::Left(new_l)
-                        });
-                        let Self::Left(l) = self else {
-                            unreachable!()
-                        };
-                        l
-                    }
-                    @both => Self::Both(l, _) => l
-                })
+            #[neither]
+            Self::Neither => {
+                // Neither => Left promotion.
+                let new_l = f();
+                replace_with_or_abort(self, move |this| {
+                    let Self::Neither = this else { unreachable!() };
+                    Self::Left(new_l)
+                });
+                let Self::Left(l) = self else { unreachable!() };
+                l
             }
-        });
-    };
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
 
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        /* empty for other cases. */
-    };
+    #[enb(!has_neither)]
+    pub fn into_left(self) -> L
+    where
+        R: Into<L>,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(r) => r.into(),
+            #[neither]
+            Self::Neither => unreachable!(),
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
 }
-
-apply_impl_to_all_variants!(impl_and_or_methods);
-apply_impl_to_all_variants!(impl_as_ref);
-apply_impl_to_all_variants!(impl_as_deref);
-apply_impl_to_all_variants!(impl_into_left_right);
-apply_impl_to_all_variants!(impl_map_with);
-apply_impl_to_all_variants!(impl_ensure);
 
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
