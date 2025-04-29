@@ -86,20 +86,20 @@ impl VisitMut for CodeProcessor {
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
         visit_item_impl_mut(self, item_impl);
 
-        let _ = find_first_and_remove_vec_mut(&mut item_impl.items, |item| {
+        item_impl.items.retain_mut(|item| {
             let attr_vec = match item {
                 ImplItem::Fn(item_fn) => &mut item_fn.attrs,
                 ImplItem::Const(item_const) => &mut item_const.attrs,
                 ImplItem::Type(item_type) => &mut item_type.attrs,
                 ImplItem::Macro(item_macro) => &mut item_macro.attrs,
-                _ => return Some(()),
+                _ => return true,
             };
             let enb_attr_result =
                 find_first_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr));
             match enb_attr_result {
-                Some(true) => None,
-                Some(false) => Some(()), // Remove the item if the attribute is false.
-                None => None,
+                Some(true) => true,
+                Some(false) => false, // Remove the item if the attribute is false.
+                None => true,
             }
         });
     }

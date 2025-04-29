@@ -122,94 +122,111 @@ impl<L, R> Enb<L, R> {
             Self::Both(l, r) => Enb::Both(r, l),
         }
     }
-}
 
-macro_rules! impl_flip {
-    (false, false, false) => {
-        /* Does not allow `!` because we cannot implement `!` types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {});
-    };
-}
+    /// Convert the left side of the variant into an `Option`.
+    /// i.e. `Left(l)` -> `Some(l)`, `Right(_)` -> `None`, `Both(l, _)` -> `Some(l)`.
+    #[enb(has_either || has_both)]
+    pub fn left(self) -> Option<L> {
+        match self {
+            #[either]
+            Self::Left(l) => Some(l),
+            #[either]
+            Self::Right(_) => None,
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(l, _) => Some(l),
+        }
+    }
 
-/// impl getters
-macro_rules! impl_getters {
-    (false, $has_n:ident, false) => {
-         /* Does not allow `Neither` nor `!` types because they don't have left/right types. */
-    };
-    ($has_e:ident, $has_n:ident, $has_b:ident) => {
-        impl_pair_type!($has_e, $has_n, $has_b, L, R, {
-            /// Convert the left side of the variant into an `Option`.
-            /// i.e. `Left(l)` -> `Some(l)`, `Right(_)` -> `None`, `Both(l, _)` -> `Some(l)`.
-            pub fn left(self) -> Option<L> {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Some(l),
-                    @either => Self::Right(_) => None,
-                    @neither => Self::Neither => None,
-                    @both => Self::Both(l, _) => Some(l),
-                })
-            }
+    #[enb(has_either || has_both)]
+    pub fn both(self) -> Option<(L, R)> {
+        match self {
+            #[either]
+            Self::Left(_) => None,
+            #[either]
+            Self::Right(_) => None,
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(l, r) => Some((l, r)),
+        }
+    }
 
-            pub fn both(self) -> Option<(L, R)> {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(_) => None,
-                    @either => Self::Right(_) => None,
-                    @neither => Self::Neither => None,
-                    @both => Self::Both(l, r) => Some((l, r)),
-                })
-            }
+    /// Returns a tuple of the optional left and right values.
+    #[enb(has_either || has_both)]
+    pub fn left_and_right(self) -> (Option<L>, Option<R>) {
+        match self {
+            #[either]
+            Self::Left(l) => (Some(l), None),
+            #[either]
+            Self::Right(r) => (None, Some(r)),
+            #[neither]
+            Self::Neither => (None, None),
+            #[both]
+            Self::Both(l, r) => (Some(l), Some(r)),
+        }
+    }
 
-            /// Returns a tuple of the optional left and right values.
-            pub fn left_and_right(self) -> (Option<L>, Option<R>) {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => (Some(l), None),
-                    @either => Self::Right(r) => (None, Some(r)),
-                    @neither => Self::Neither => (None, None),
-                    @both => Self::Both(l, r) => (Some(l), Some(r)),
-                })
-            }
+    /// Unwrap the left value from the variant.
+    ///
+    /// # Panics
+    ///
+    /// - If the variant is something not containing a left value.
+    #[enb(has_either || has_both)]
+    pub fn unwrap_left(self) -> L
+    where
+        R: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(r) => panic!("Expected a Left variant, but got a right value:{:?}", r),
+            #[neither]
+            Self::Neither => panic!("Expected a Left variant, but got a Neither variant"),
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
 
-            /// Unwrap the left value from the variant.
-            ///
-            /// # Panics
-            ///
-            /// - If the variant is something not containing a left value.
-            pub fn unwrap_left(self) -> L where R: Debug {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(r) => panic!("Expected a Left variant, but got a right value:{:?}", r),
-                    @neither => Self::Neither => panic!("Expected a Left variant, but got a Neither variant"),
-                    @both => Self::Both(l, _) => l,
-                })
-            }
+    /// Unwrap the left value from the variant.
+    ///
+    /// # Panics
+    ///
+    /// - If the variant is something not containing a left value.
+    #[enb(has_either || has_both)]
+    pub fn expect_left(self, #[allow(unused)] msg: &str) -> L
+    where
+        R: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(r) => panic!("{}: {:?}", msg, r),
+            #[neither]
+            Self::Neither => panic!("{}", msg),
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
 
-            /// Unwrap the left value from the variant.
-            ///
-            /// # Panics
-            ///
-            /// - If the variant is something not containing a left value.
-            pub fn expect_left(self, #[allow(unused)] msg: &str) -> L where R: Debug {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => l,
-                    @either => Self::Right(r) => panic!("{}: {:?}", msg, r),
-                    @neither => Self::Neither => panic!("{}", msg),
-                    @both => Self::Both(l, _) => l,
-                })
-            }
-
-            /// If the variant is a `Left` variant, return the left value.
-            /// Otherwise (even the variant is a `Both` variant), return `None`.
-            pub fn just_left(self) -> Option<L> {
-                match_possible_variants!(self, $has_e, $has_n, $has_b, {
-                    @either => Self::Left(l) => Some(l),
-                    @either => Self::Right(_) => None,
-                    @neither => Self::Neither => None,
-                    @both => Self::Both(_, _) => None,
-                })
-            }
-        });
-    };
+    /// If the variant is a `Left` variant, return the left value.
+    /// Otherwise (even the variant is a `Both` variant), return `None`.
+    #[enb(has_either || has_both)]
+    pub fn just_left(self) -> Option<L> {
+        match self {
+            #[either]
+            Self::Left(l) => Some(l),
+            #[either]
+            Self::Right(_) => None,
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(_, _) => None,
+        }
+    }
 }
 
 // impl for 'or' and 'and' operations.
@@ -601,8 +618,6 @@ macro_rules! impl_ensure {
     };
 }
 
-apply_impl_to_all_variants!(impl_flip);
-apply_impl_to_all_variants!(impl_getters);
 apply_impl_to_all_variants!(impl_and_or_methods);
 apply_impl_to_all_variants!(impl_as_ref);
 apply_impl_to_all_variants!(impl_as_deref);
