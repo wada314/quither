@@ -132,12 +132,10 @@ impl<L, R> Enb<L, R> {
         match self {
             #[either]
             Self::Left(l) => Some(l),
-            #[either]
-            Self::Right(_) => None,
-            #[neither]
-            Self::Neither => None,
             #[both]
             Self::Both(l, _) => Some(l),
+            #[allow(unused)]
+            _ => None,
         }
     }
 
@@ -147,13 +145,11 @@ impl<L, R> Enb<L, R> {
     pub fn right(self) -> Option<R> {
         match self {
             #[either]
-            Self::Left(_) => None,
-            #[either]
             Self::Right(r) => Some(r),
-            #[neither]
-            Self::Neither => None,
             #[both]
             Self::Both(_, r) => Some(r),
+            #[allow(unused)]
+            _ => None,
         }
     }
 
@@ -171,10 +167,35 @@ impl<L, R> Enb<L, R> {
         }
     }
 
+    /// If the variant is a `Left` variant, return the left value.
+    /// Otherwise (even the variant is a `Both` variant), return `None`.
+    #[enb(has_either || has_both)]
     pub fn just_left(self) -> Option<L> {
         match self {
             #[either]
             Self::Left(l) => Some(l),
+            #[allow(unused)]
+            _ => None,
+        }
+    }
+
+    /// If the variant is a `Right` variant, return the right value.
+    /// Otherwise (even the variant is a `Both` variant), return `None`.
+    #[enb(has_either || has_both)]
+    pub fn just_right(self) -> Option<R> {
+        match self {
+            #[either]
+            Self::Right(r) => Some(r),
+            #[allow(unused)]
+            _ => None,
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn both(self) -> Option<(L, R)> {
+        match self {
+            #[both]
+            Self::Both(l, r) => Some((l, r)),
             #[allow(unused)]
             _ => None,
         }
@@ -549,35 +570,6 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
-    pub fn both(self) -> Option<(L, R)> {
-        match self {
-            #[either]
-            Self::Left(_) => None,
-            #[either]
-            Self::Right(_) => None,
-            #[neither]
-            Self::Neither => None,
-            #[both]
-            Self::Both(l, r) => Some((l, r)),
-        }
-    }
-
-    /// Returns a tuple of the optional left and right values.
-    #[enb(has_either || has_both)]
-    pub fn left_and_right(self) -> (Option<L>, Option<R>) {
-        match self {
-            #[either]
-            Self::Left(l) => (Some(l), None),
-            #[either]
-            Self::Right(r) => (None, Some(r)),
-            #[neither]
-            Self::Neither => (None, None),
-            #[both]
-            Self::Both(l, r) => (Some(l), Some(r)),
-        }
-    }
-
     /// Apply the function `f` on the value in the left position if it is present,
     /// and then rewrap the result in a same variant of the new type.
     #[enb(has_either || has_both)]
@@ -795,38 +787,6 @@ impl<L, R> Enb<L, R> {
             Self::Neither => Enb::Neither,
             #[both]
             Self::Both(l, r) => Enb::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
-        }
-    }
-
-    /// If the variant is a `Left` variant, return the left value.
-    /// Otherwise (even the variant is a `Both` variant), return `None`.
-    #[enb(has_either || has_both)]
-    pub fn just_left(self) -> Option<L> {
-        match self {
-            #[either]
-            Self::Left(l) => Some(l),
-            #[either]
-            Self::Right(_) => None,
-            #[neither]
-            Self::Neither => None,
-            #[both]
-            Self::Both(_, _) => None,
-        }
-    }
-
-    /// If the variant is a `Right` variant, return the right value.
-    /// Otherwise (even the variant is a `Both` variant), return `None`.
-    #[enb(has_either || has_both)]
-    pub fn just_right(self) -> Option<R> {
-        match self {
-            #[either]
-            Self::Left(_) => None,
-            #[either]
-            Self::Right(r) => Some(r),
-            #[neither]
-            Self::Neither => None,
-            #[both]
-            Self::Both(_, _) => None,
         }
     }
 }
