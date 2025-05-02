@@ -1,8 +1,8 @@
 [package]
-name = "enb"
+name = "quither"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 replace_with = "0.1.7"
-enb-proc-macros = { path = "../enb-proc-macros" }
+quither-proc-macros = { path = "../quither-proc-macros" }

@@ -23,7 +23,7 @@ use ::syn::{
 };
 
 #[proc_macro_attribute]
-pub fn enb(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn quither(_args: TokenStream, input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as ItemImpl);
     let mut results = Vec::<TokenStream2>::new();
     for (e, n, b) in [
@@ -35,7 +35,7 @@ pub fn enb(_args: TokenStream, input: TokenStream) -> TokenStream {
         (false, true, true),
         (true, true, true),
     ] {
-        results.push(expand_enb(ast.clone(), e, n, b));
+        results.push(expand_quither(ast.clone(), e, n, b));
     }
     quote! {
         #(#results)*
@@ -43,7 +43,7 @@ pub fn enb(_args: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
-fn expand_enb(
+fn expand_quither(
     mut input: ItemImpl,
     has_either: bool,
     has_neither: bool,
@@ -75,15 +75,15 @@ impl VisitMut for CodeProcessor {
         // Recursively visit the path, do replacements in inner paths first.
         visit_path_mut(self, node);
 
-        // Type `Enb<L, R>` or `Enb<L, R, has_either, has_neither, has_both>` will be
+        // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
-            if segment.ident == "Enb" {
-                self.replace_enb_path_segment(segment);
+            if segment.ident == "Quither" {
+                self.replace_quither_path_segment(segment);
             }
         }
 
-        self.replace_has_enb_path(node);
+        self.replace_has_quither_path(node);
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
@@ -97,9 +97,9 @@ impl VisitMut for CodeProcessor {
                 ImplItem::Macro(item_macro) => &mut item_macro.attrs,
                 _ => return true,
             };
-            let enb_attr_result =
+            let quither_attr_result =
                 find_first_and_remove_vec_mut(attr_vec, |attr| self.check_attr_is_true(attr));
-            match enb_attr_result {
+            match quither_attr_result {
                 Some(true) => true,
                 Some(false) => false, // Remove the item if the attribute is false.
                 None => true,
@@ -118,7 +118,7 @@ impl VisitMut for CodeProcessor {
 }
 
 impl CodeProcessor {
-    fn replace_enb_path_segment(&mut self, segment: &mut PathSegment) {
+    fn replace_quither_path_segment(&mut self, segment: &mut PathSegment) {
         let args = match &mut segment.arguments {
             PathArguments::AngleBracketed(syn_args) => {
                 syn_args.args.clone().into_pairs().collect::<Vec<_>>()
@@ -143,7 +143,7 @@ impl CodeProcessor {
             return;
         };
         let new_ident = match bool_args {
-            (true, true, true) => "EitherOrNeitherOrBoth",
+            (true, true, true) => "Quither",
             (true, true, false) => "EitherOrNeither",
             (true, false, true) => "EitherOrBoth",
             (true, false, false) => "Either",
@@ -170,7 +170,7 @@ impl CodeProcessor {
         }
     }
 
-    fn replace_has_enb_path(&mut self, path: &mut Path) {
+    fn replace_has_quither_path(&mut self, path: &mut Path) {
         let Some(ident) = path.get_ident() else {
             return;
         };
@@ -195,20 +195,20 @@ impl CodeProcessor {
             return Some(self.has_neither);
         } else if path_is_an_ident(&attr_path, "both") {
             return Some(self.has_both);
-        } else if path_is_an_ident(&attr_path, "enb") {
-            return self.check_enb_attr_condition(&attr.parse_args().ok()?);
+        } else if path_is_an_ident(&attr_path, "quither") {
+            return self.check_quither_attr_condition(&attr.parse_args().ok()?);
         } else {
             return None;
         }
     }
 
-    fn check_enb_attr_condition(&self, args: &Expr) -> Option<bool> {
+    fn check_quither_attr_condition(&self, args: &Expr) -> Option<bool> {
         match args {
             Expr::Binary(ExprBinary {
                 left, right, op, ..
             }) => {
-                let left = self.check_enb_attr_condition(left)?;
-                let right = self.check_enb_attr_condition(right)?;
+                let left = self.check_quither_attr_condition(left)?;
+                let right = self.check_quither_attr_condition(right)?;
                 match op {
                     BinOp::And(_) => Some(left && right),
                     BinOp::Or(_) => Some(left || right),
@@ -219,8 +219,8 @@ impl CodeProcessor {
                 expr,
                 op: UnOp::Not(_),
                 ..
-            }) => self.check_enb_attr_condition(expr).map(|b| !b),
-            Expr::Paren(ExprParen { expr, .. }) => self.check_enb_attr_condition(expr),
+            }) => self.check_quither_attr_condition(expr).map(|b| !b),
+            Expr::Paren(ExprParen { expr, .. }) => self.check_quither_attr_condition(expr),
             Expr::Path(ExprPath { path, .. }) => {
                 if path_is_an_ident(path, "has_either") {
                     Some(self.has_either)

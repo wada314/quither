@@ -12,12 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! "Quad-state Either": Quither. In other words, either-or-neither-or-both type.
+//!
+//! Quither is a type that represents four states:
+//! - `Left(L)`
+//! - `Right(R)`
+//! - `Both(L, R)`
+//! - `Neither`
+//!
+//! This crate also provides an arbitrary combination types of `Either`, `Neither`, and `Both`.
+//! For example, `EitherOrBoth<L, R>` is a type that represents either a left (`Left(L)`) or right (`Right(R)`) or both (`Both(L, R)`).
+//! These types have consistent APIs (as much as possible ☺) so that you can use them interchangeably.
+
 use ::replace_with::replace_with_or_abort;
 use ::std::fmt::Debug;
 use ::std::ops::{Deref, DerefMut};
 use ::std::pin::Pin;
 
-use ::enb_proc_macros::enb;
+use ::quither_proc_macros::quither;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
@@ -58,15 +70,15 @@ pub enum NeitherOrBoth<L, R> {
 }
 
 /// An enum that represents either an empty value, left value, right value, or both values.
-pub enum EitherOrNeitherOrBoth<L, R> {
+pub enum Quither<L, R> {
     Neither,
     Left(L),
     Right(R),
     Both(L, R),
 }
 
-#[enb]
-impl<L, R> Enb<L, R> {
+#[quither]
+impl<L, R> Quither<L, R> {
     pub fn has_left(&self) -> bool {
         match self {
             #[either]
@@ -127,7 +139,7 @@ impl<L, R> Enb<L, R> {
 
     /// Convert the left side of the variant into an `Option`.
     /// i.e. `Left(l)` -> `Some(l)`, `Right(_)` -> `None`, `Both(l, _)` -> `Some(l)`.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn left(self) -> Option<L> {
         match self {
             #[either]
@@ -141,7 +153,7 @@ impl<L, R> Enb<L, R> {
 
     /// Convert the right side of the variant into an `Option`.
     /// i.e. `Left(_)` -> `None`, `Right(r)` -> `Some(r)`, `Both(_, r)` -> `Some(r)`.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn right(self) -> Option<R> {
         match self {
             #[either]
@@ -153,7 +165,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn left_and_right(self) -> (Option<L>, Option<R>) {
         match self {
             #[either]
@@ -169,7 +181,7 @@ impl<L, R> Enb<L, R> {
 
     /// If the variant is a `Left` variant, return the left value.
     /// Otherwise (even the variant is a `Both` variant), return `None`.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn just_left(self) -> Option<L> {
         match self {
             #[either]
@@ -181,7 +193,7 @@ impl<L, R> Enb<L, R> {
 
     /// If the variant is a `Right` variant, return the right value.
     /// Otherwise (even the variant is a `Both` variant), return `None`.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn just_right(self) -> Option<R> {
         match self {
             #[either]
@@ -191,7 +203,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn both(self) -> Option<(L, R)> {
         match self {
             #[both]
@@ -201,16 +213,16 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    pub fn flip(self) -> Enb<R, L> {
+    pub fn flip(self) -> Quither<R, L> {
         match self {
             #[either]
-            Self::Left(l) => Enb::Right(l),
+            Self::Left(l) => Quither::Right(l),
             #[either]
-            Self::Right(r) => Enb::Left(r),
+            Self::Right(r) => Quither::Left(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(r, l),
+            Self::Both(l, r) => Quither::Both(r, l),
         }
     }
 
@@ -219,7 +231,7 @@ impl<L, R> Enb<L, R> {
     /// # Panics
     ///
     /// - If the variant is something not containing a left value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn unwrap_left(self) -> L
     where
         R: Debug,
@@ -241,7 +253,7 @@ impl<L, R> Enb<L, R> {
     /// # Panics
     ///
     /// - If the variant is something not containing a right value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn unwrap_right(self) -> R
     where
         L: Debug,
@@ -258,7 +270,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn unwrap_both(self) -> (L, R)
     where
         L: Debug,
@@ -281,7 +293,7 @@ impl<L, R> Enb<L, R> {
     /// # Panics
     ///
     /// - If the variant is something not containing a left value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn expect_left(self, #[allow(unused)] msg: &str) -> L
     where
         R: Debug,
@@ -303,7 +315,7 @@ impl<L, R> Enb<L, R> {
     /// # Panics
     ///
     /// - If the variant is something not containing a right value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn expect_right(self, #[allow(unused)] msg: &str) -> R
     where
         L: Debug,
@@ -320,7 +332,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn expect_both(self, #[allow(unused)] msg: &str) -> (L, R)
     where
         L: Debug,
@@ -339,7 +351,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return left value or given value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn left_or(self, #[allow(unused)] other: L) -> L {
         match self {
             #[either]
@@ -354,7 +366,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return right value or given value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn right_or(self, #[allow(unused)] other: R) -> R {
         match self {
             #[either]
@@ -369,7 +381,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return the both values as a tuple, or the given value if either side is missing.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn both_or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
         match self {
             #[either]
@@ -384,7 +396,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return left value or default value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn left_or_default(self) -> L
     where
         L: Default,
@@ -400,7 +412,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return right value or default value.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn right_or_default(self) -> R
     where
         R: Default,
@@ -416,7 +428,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return a tuple of both values, or the default values if either side is missing.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn both_or_default(self) -> (L, R)
     where
         L: Default,
@@ -435,7 +447,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return left value or computes it from a closure.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn left_or_else<F>(self, #[allow(unused)] f: F) -> L
     where
         F: FnOnce() -> L,
@@ -453,7 +465,7 @@ impl<L, R> Enb<L, R> {
     }
 
     /// Return right value or computes it from a closure.
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn right_or_else<F>(self, #[allow(unused)] f: F) -> R
     where
         F: FnOnce() -> R,
@@ -470,7 +482,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
+    #[quither(has_either || has_both)]
     pub fn both_or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
     where
         F: FnOnce() -> L,
@@ -488,91 +500,91 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
-    pub fn map<F, G, L2, R2>(self, f: F, g: G) -> Enb<L2, R2>
+    #[quither(has_either || has_both)]
+    pub fn map<F, G, L2, R2>(self, f: F, g: G) -> Quither<L2, R2>
     where
         F: FnOnce(L) -> L2,
         G: FnOnce(R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(f(l)),
+            Self::Left(l) => Quither::Left(f(l)),
             #[either]
-            Self::Right(r) => Enb::Right(g(r)),
+            Self::Right(r) => Quither::Right(g(r)),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(f(l), g(r)),
+            Self::Both(l, r) => Quither::Both(f(l), g(r)),
         }
     }
 
-    #[enb(has_either || has_both)]
-    pub fn map_left<F, L2>(self, f: F) -> Enb<L2, R>
+    #[quither(has_either || has_both)]
+    pub fn map_left<F, L2>(self, f: F) -> Quither<L2, R>
     where
         F: FnOnce(L) -> L2,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(f(l)),
+            Self::Left(l) => Quither::Left(f(l)),
             #[either]
-            Self::Right(r) => Enb::Right(r),
+            Self::Right(r) => Quither::Right(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(f(l), r),
+            Self::Both(l, r) => Quither::Both(f(l), r),
         }
     }
 
-    #[enb(has_either || has_both)]
-    pub fn map_right<F, R2>(self, f: F) -> Enb<L, R2>
+    #[quither(has_either || has_both)]
+    pub fn map_right<F, R2>(self, f: F) -> Quither<L, R2>
     where
         F: FnOnce(R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l),
+            Self::Left(l) => Quither::Left(l),
             #[either]
-            Self::Right(r) => Enb::Right(f(r)),
+            Self::Right(r) => Quither::Right(f(r)),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(l, f(r)),
+            Self::Both(l, r) => Quither::Both(l, f(r)),
         }
     }
 
     /// Creates a new variant with references to the contained values.
-    #[enb(has_either || has_neither || has_both)]
-    pub fn as_ref(&self) -> Enb<&L, &R> {
+    #[quither(has_either || has_neither || has_both)]
+    pub fn as_ref(&self) -> Quither<&L, &R> {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l),
+            Self::Left(l) => Quither::Left(l),
             #[either]
-            Self::Right(r) => Enb::Right(r),
+            Self::Right(r) => Quither::Right(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(l, r),
+            Self::Both(l, r) => Quither::Both(l, r),
         }
     }
 
     /// Creates a new variant with mutable references to the contained values.
-    #[enb(has_either || has_neither || has_both)]
-    pub fn as_mut(&mut self) -> Enb<&mut L, &mut R> {
+    #[quither(has_either || has_neither || has_both)]
+    pub fn as_mut(&mut self) -> Quither<&mut L, &mut R> {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l),
+            Self::Left(l) => Quither::Left(l),
             #[either]
-            Self::Right(r) => Enb::Right(r),
+            Self::Right(r) => Quither::Right(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(l, r),
+            Self::Both(l, r) => Quither::Both(l, r),
         }
     }
 
     /// Creates a new pinned variant with references to the contained values.
-    #[enb(has_either || has_neither || has_both)]
-    pub fn as_pin_ref(self: Pin<&Self>) -> Enb<Pin<&L>, Pin<&R>> {
+    #[quither(has_either || has_neither || has_both)]
+    pub fn as_pin_ref(self: Pin<&Self>) -> Quither<Pin<&L>, Pin<&R>> {
         // SAFETY: This is safe because:
         // 1. We never move the inner values - we only create a new reference to them
         // 2. The original Pin<&Self> guarantees that the original data won't move
@@ -582,20 +594,20 @@ impl<L, R> Enb<L, R> {
         unsafe {
             match self.get_ref() {
                 #[either]
-                Self::Left(l) => Enb::Left(Pin::new_unchecked(l)),
+                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
                 #[either]
-                Self::Right(r) => Enb::Right(Pin::new_unchecked(r)),
+                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
                 #[neither]
-                Self::Neither => Enb::Neither,
+                Self::Neither => Quither::Neither,
                 #[both]
-                Self::Both(l, r) => Enb::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
             }
         }
     }
 
     /// Creates a new pinned variant with mutable references to the contained values.
-    #[enb(has_either || has_neither || has_both)]
-    pub fn as_pin_mut(self: Pin<&mut Self>) -> Enb<Pin<&mut L>, Pin<&mut R>> {
+    #[quither(has_either || has_neither || has_both)]
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Quither<Pin<&mut L>, Pin<&mut R>> {
         // SAFETY: This is safe because:
         // 1. We never move the inner values out of the pin
         // 2. We're creating new Pin instances from references to pinned data
@@ -605,69 +617,69 @@ impl<L, R> Enb<L, R> {
         unsafe {
             match self.get_unchecked_mut() {
                 #[either]
-                Self::Left(l) => Enb::Left(Pin::new_unchecked(l)),
+                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
                 #[either]
-                Self::Right(r) => Enb::Right(Pin::new_unchecked(r)),
+                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
                 #[neither]
-                Self::Neither => Enb::Neither,
+                Self::Neither => Quither::Neither,
                 #[both]
-                Self::Both(l, r) => Enb::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
             }
         }
     }
 
     /// Returns a new value using the `Deref` trait for `L` and `R` values.
-    #[enb(has_either || has_both)]
-    pub fn as_deref(&self) -> Enb<&L::Target, &R::Target>
+    #[quither(has_either || has_both)]
+    pub fn as_deref(&self) -> Quither<&L::Target, &R::Target>
     where
         L: Deref,
         R: Deref,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l.deref()),
+            Self::Left(l) => Quither::Left(l.deref()),
             #[either]
-            Self::Right(r) => Enb::Right(r.deref()),
+            Self::Right(r) => Quither::Right(r.deref()),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(l.deref(), r.deref()),
+            Self::Both(l, r) => Quither::Both(l.deref(), r.deref()),
         }
     }
 
     /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
-    #[enb(has_either || has_both)]
-    pub fn as_deref_mut(&mut self) -> Enb<&mut L::Target, &mut R::Target>
+    #[quither(has_either || has_both)]
+    pub fn as_deref_mut(&mut self) -> Quither<&mut L::Target, &mut R::Target>
     where
         L: DerefMut,
         R: DerefMut,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l.deref_mut()),
+            Self::Left(l) => Quither::Left(l.deref_mut()),
             #[either]
-            Self::Right(r) => Enb::Right(r.deref_mut()),
+            Self::Right(r) => Quither::Right(r.deref_mut()),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(l.deref_mut(), r.deref_mut()),
+            Self::Both(l, r) => Quither::Both(l.deref_mut(), r.deref_mut()),
         }
     }
 
     /// Apply the function `f` on the value in the left position if it is present,
     /// and then rewrap the result in a same variant of the new type.
-    #[enb(has_either || has_both)]
-    pub fn left_and_then<F, L2>(self, f: F) -> Enb<L2, R>
+    #[quither(has_either || has_both)]
+    pub fn left_and_then<F, L2>(self, f: F) -> Quither<L2, R>
     where
-        F: FnOnce(L) -> Enb<L2, R>,
+        F: FnOnce(L) -> Quither<L2, R>,
     {
         match self {
             #[either]
             Self::Left(l) => f(l),
             #[either]
-            Self::Right(r) => Enb::Right(r),
+            Self::Right(r) => Quither::Right(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
             Self::Both(l, _) => f(l),
         }
@@ -675,18 +687,18 @@ impl<L, R> Enb<L, R> {
 
     /// Apply the function `f` on the value in the right position if it is present,
     /// and then rewrap the result in a same variant of the new type.
-    #[enb(has_either || has_both)]
-    pub fn right_and_then<F, R2>(self, f: F) -> Enb<L, R2>
+    #[quither(has_either || has_both)]
+    pub fn right_and_then<F, R2>(self, f: F) -> Quither<L, R2>
     where
-        F: FnOnce(R) -> Enb<L, R2>,
+        F: FnOnce(R) -> Quither<L, R2>,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(l),
+            Self::Left(l) => Quither::Left(l),
             #[either]
             Self::Right(r) => f(r),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
             Self::Both(_, r) => f(r),
         }
@@ -697,11 +709,15 @@ impl<L, R> Enb<L, R> {
     ///   - If it can "promote" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
     ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
     /// And set the left value to the given value and return it.
-    #[enb(!has_neither || has_either)]
+    #[quither(!has_neither || has_either)]
     // ↑ means: (has_neither => has_either).
     // This is needed to do the variant promotion when inserting the left value into `Neither` variant.
     pub fn ensure_left(&mut self, l: L) -> &mut L {
         self.ensure_left_with(move || l)
+    }
+    #[quither(!has_neither || has_either)]
+    pub fn ensure_right(&mut self, r: R) -> &mut R {
+        self.ensure_right_with(move || r)
     }
 
     /// Ensure the left value is present. If possible, keep the right value too.
@@ -711,7 +727,7 @@ impl<L, R> Enb<L, R> {
     ///   - If it can \"promote\" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
     ///   - Otherwise, set the variant to `Left` (dispose the right value even if it is present).
     /// And set the left value to the given closure's return value and return it.
-    #[enb(!has_neither || has_either)]
+    #[quither(!has_neither || has_either)]
     pub fn ensure_left_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
     where
         F: FnOnce() -> L,
@@ -719,7 +735,7 @@ impl<L, R> Enb<L, R> {
         match self {
             #[either]
             Self::Left(l) => l,
-            #[enb(has_either && has_both)]
+            #[quither(has_either && has_both)]
             Self::Right(_) => {
                 // Right => Both promotion.
                 let new_l = f();
@@ -732,7 +748,7 @@ impl<L, R> Enb<L, R> {
                 };
                 l
             }
-            #[enb(has_either && !has_both)]
+            #[quither(has_either && !has_both)]
             Self::Right(_) => {
                 // No promotion.
                 *self = Self::Left(f());
@@ -755,7 +771,51 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(!has_neither)]
+    #[quither(!has_neither || has_either)]
+    pub fn ensure_right_with<F>(&mut self, #[allow(unused)] f: F) -> &mut R
+    where
+        F: FnOnce() -> R,
+    {
+        match self {
+            #[quither(has_either && has_both)]
+            Self::Left(l) => {
+                // Left => Both promotion.
+                let new_r = f();
+                replace_with_or_abort(self, move |this| {
+                    let Self::Left(l) = this else { unreachable!() };
+                    Self::Both(l, new_r)
+                });
+                let Self::Both(_, r) = self else {
+                    unreachable!()
+                };
+                r
+            }
+            #[quither(has_either && !has_both)]
+            Self::Left(_) => {
+                // No promotion.
+                *self = Self::Right(f());
+                let Self::Right(r) = self else { unreachable!() };
+                r
+            }
+            #[either]
+            Self::Right(r) => r,
+            #[neither]
+            Self::Neither => {
+                // Neither => Right promotion.
+                let new_r = f();
+                replace_with_or_abort(self, move |this| {
+                    let Self::Neither = this else { unreachable!() };
+                    Self::Right(new_r)
+                });
+                let Self::Right(r) = self else { unreachable!() };
+                r
+            }
+            #[both]
+            Self::Both(_, r) => r,
+        }
+    }
+
+    #[quither(!has_neither)]
     pub fn into_left(self) -> L
     where
         R: Into<L>,
@@ -772,7 +832,7 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(!has_neither)]
+    #[quither(!has_neither)]
     pub fn into_right(self) -> R
     where
         L: Into<R>,
@@ -789,24 +849,24 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either && !has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Enb<L2, R2>
+    #[quither(has_either && !has_both)]
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
     where
         F: FnOnce(Ctx, L) -> L2,
         G: FnOnce(Ctx, R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(f(ctx, l)),
+            Self::Left(l) => Quither::Left(f(ctx, l)),
             #[either]
-            Self::Right(r) => Enb::Right(g(ctx, r)),
+            Self::Right(r) => Quither::Right(g(ctx, r)),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
         }
     }
 
-    #[enb(has_either && has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Enb<L2, R2>
+    #[quither(has_either && has_both)]
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
     where
         Ctx: Clone,
         F: FnOnce(Ctx, L) -> L2,
@@ -814,36 +874,128 @@ impl<L, R> Enb<L, R> {
     {
         match self {
             #[either]
-            Self::Left(l) => Enb::Left(f(ctx, l)),
+            Self::Left(l) => Quither::Left(f(ctx, l)),
             #[either]
-            Self::Right(r) => Enb::Right(g(ctx, r)),
+            Self::Right(r) => Quither::Right(g(ctx, r)),
             #[neither]
-            Self::Neither => Enb::Neither,
+            Self::Neither => Quither::Neither,
             #[both]
-            Self::Both(l, r) => Enb::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
+            Self::Both(l, r) => Quither::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
+        }
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    pub fn left_or_insert(&mut self, l: L) -> &mut L {
+        self.left_or_insert_with(move || l)
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    pub fn right_or_insert(&mut self, r: R) -> &mut R {
+        self.right_or_insert_with(move || r)
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    // ↑ means: (has_neither -> has_either) && (has_either -> has_both)
+    pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
+    where
+        F: FnOnce() -> L,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(_) => {
+                // Right => Both promotion. It is guaranteed that the `Both` variant is present
+                // because of the method's attribute.
+                replace_with_or_abort(self, move |this| {
+                    let Self::Right(r) = this else { unreachable!() };
+                    Self::Both(f(), r)
+                });
+                let Self::Both(l, _) = self else {
+                    unreachable!()
+                };
+                l
+            }
+            #[neither]
+            Self::Neither => {
+                // Neither => Left promotion. It is guaranteed that the `Left` variant is present
+                // because of the method's attribute.
+                replace_with_or_abort(self, move |this| {
+                    let Self::Neither = this else { unreachable!() };
+                    Self::Left(f())
+                });
+                let Self::Left(l) = self else { unreachable!() };
+                l
+            }
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    pub fn right_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut R
+    where
+        F: FnOnce() -> R,
+    {
+        match self {
+            #[either]
+            Self::Right(r) => r,
+            #[either]
+            Self::Left(_) => {
+                // Left => Both promotion. It is guaranteed that the `Both` variant is present
+                // because of the method's attribute.
+                replace_with_or_abort(self, move |this| {
+                    let Self::Left(l) = this else { unreachable!() };
+                    Self::Both(l, f())
+                });
+                let Self::Both(_, r) = self else {
+                    unreachable!()
+                };
+                r
+            }
+            #[neither]
+            Self::Neither => {
+                // Neither => Right promotion. It is guaranteed that the `Right` variant is present
+                // because of the method's attribute.
+                replace_with_or_abort(self, move |this| {
+                    let Self::Neither = this else { unreachable!() };
+                    Self::Right(f())
+                });
+                let Self::Right(r) = self else { unreachable!() };
+                r
+            }
+            #[both]
+            Self::Both(_, r) => r,
         }
     }
 }
 
-#[enb]
-impl<L, R> Enb<Option<L>, Option<R>> {
-    #[enb(!has_neither && (has_either || has_both))]
-    pub fn factor_none(self) -> Option<Enb<L, R, true, false, has_both>> {
+#[quither]
+impl<L, R> Quither<Option<L>, Option<R>> {
+    /// Factor out the `None` values out from the type.
+    ///
+    /// This method is only available in the type which is NOT containing `Neither` variant.
+    ///
+    /// TODO: Needs examples.
+    #[quither(!has_neither && (has_either || has_both))]
+    pub fn factor_none(self) -> Option<Quither<L, R, true, false, has_both>> {
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Enb::<L, R, true, false, has_both>::Left(l)),
+            Self::Left(Some(l)) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
             #[either]
             Self::Left(None) => None,
             #[either]
-            Self::Right(Some(r)) => Some(Enb::<L, R, true, false, has_both>::Right(r)),
+            Self::Right(Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
             #[either]
             Self::Right(None) => None,
             #[both]
-            Self::Both(Some(l), Some(r)) => Some(Enb::<L, R, true, false, has_both>::Both(l, r)),
+            Self::Both(Some(l), Some(r)) => {
+                Some(Quither::<L, R, true, false, has_both>::Both(l, r))
+            }
             #[both]
-            Self::Both(Some(l), None) => Some(Enb::<L, R, true, false, has_both>::Left(l)),
+            Self::Both(Some(l), None) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
             #[both]
-            Self::Both(None, Some(r)) => Some(Enb::<L, R, true, false, has_both>::Right(r)),
+            Self::Both(None, Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
             #[both]
             Self::Both(None, None) => None,
         }
@@ -871,6 +1023,17 @@ impl<L, R> Either<L, R> {
         match self {
             Either::Left(l) => f(ctx, l),
             Either::Right(r) => g(ctx, r),
+        }
+    }
+
+    pub fn either_into<T>(self) -> T
+    where
+        L: Into<T>,
+        R: Into<T>,
+    {
+        match self {
+            Either::Left(l) => l.into(),
+            Either::Right(r) => r.into(),
         }
     }
 

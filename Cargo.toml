@@ -1,2 +1,2 @@
 [workspace]
-members = ["enb", "enb-proc-macros"]
+members = ["quither", "quither-proc-macros"]
