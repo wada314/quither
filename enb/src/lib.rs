@@ -67,55 +67,61 @@ pub enum EitherOrNeitherOrBoth<L, R> {
 
 #[enb]
 impl<L, R> Enb<L, R> {
+    pub fn has_left(&self) -> bool {
+        match self {
+            #[either]
+            Self::Left(_) => true,
+            #[both]
+            Self::Both(_, _) => true,
+            #[allow(unused)]
+            _ => false,
+        }
+    }
+
+    pub fn has_right(&self) -> bool {
+        match self {
+            #[either]
+            Self::Right(_) => true,
+            #[both]
+            Self::Both(_, _) => true,
+            #[allow(unused)]
+            _ => false,
+        }
+    }
+
     pub fn is_left(&self) -> bool {
         match self {
             #[either]
             Self::Left(_) => true,
-            #[either]
-            Self::Right(_) => false,
-            #[neither]
-            Self::Neither => false,
-            #[both]
-            Self::Both(_, _) => true,
+            #[allow(unused)]
+            _ => false,
         }
     }
 
     pub fn is_right(&self) -> bool {
         match self {
             #[either]
-            Self::Left(_) => false,
-            #[either]
             Self::Right(_) => true,
-            #[neither]
-            Self::Neither => false,
-            #[both]
-            Self::Both(_, _) => true,
+            #[allow(unused)]
+            _ => false,
         }
     }
 
     pub fn is_neither(&self) -> bool {
         match self {
-            #[either]
-            Self::Left(_) => false,
-            #[either]
-            Self::Right(_) => false,
             #[neither]
             Self::Neither => true,
-            #[both]
-            Self::Both(_, _) => false,
+            #[allow(unused)]
+            _ => false,
         }
     }
 
     pub fn is_both(&self) -> bool {
         match self {
-            #[either]
-            Self::Left(_) => false,
-            #[either]
-            Self::Right(_) => false,
-            #[neither]
-            Self::Neither => false,
             #[both]
             Self::Both(_, _) => true,
+            #[allow(unused)]
+            _ => false,
         }
     }
 
@@ -148,6 +154,29 @@ impl<L, R> Enb<L, R> {
             Self::Neither => None,
             #[both]
             Self::Both(_, r) => Some(r),
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn left_and_right(self) -> (Option<L>, Option<R>) {
+        match self {
+            #[either]
+            Self::Left(l) => (Some(l), None),
+            #[either]
+            Self::Right(r) => (None, Some(r)),
+            #[neither]
+            Self::Neither => (None, None),
+            #[both]
+            Self::Both(l, r) => (Some(l), Some(r)),
+        }
+    }
+
+    pub fn just_left(self) -> Option<L> {
+        match self {
+            #[either]
+            Self::Left(l) => Some(l),
+            #[allow(unused)]
+            _ => None,
         }
     }
 
