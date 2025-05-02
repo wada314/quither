@@ -471,6 +471,24 @@ impl<L, R> Enb<L, R> {
     }
 
     #[enb(has_either || has_both)]
+    pub fn both_or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
+    where
+        F: FnOnce() -> L,
+        G: FnOnce() -> R,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => (l, g()),
+            #[either]
+            Self::Right(r) => (f(), r),
+            #[neither]
+            Self::Neither => (f(), g()),
+            #[both]
+            Self::Both(l, r) => (l, r),
+        }
+    }
+
+    #[enb(has_either || has_both)]
     pub fn map<F, G, L2, R2>(self, f: F, g: G) -> Enb<L2, R2>
     where
         F: FnOnce(L) -> L2,
