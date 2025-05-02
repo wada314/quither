@@ -370,16 +370,16 @@ impl<L, R> Enb<L, R> {
 
     /// Return the both values as a tuple, or the given value if either side is missing.
     #[enb(has_either || has_both)]
-    pub fn both_or(self, #[allow(unused)] other: (L, R)) -> (L, R) {
+    pub fn both_or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
         match self {
             #[either]
-            Self::Left(l) => (l, other.1),
+            Self::Left(l2) => (l2, r),
             #[either]
-            Self::Right(r) => (other.0, r),
+            Self::Right(r2) => (l, r2),
             #[neither]
-            Self::Neither => other,
+            Self::Neither => (l, r),
             #[both]
-            Self::Both(l, r) => (l, r),
+            Self::Both(l2, r2) => (l2, r2),
         }
     }
 
@@ -692,56 +692,6 @@ impl<L, R> Enb<L, R> {
         }
     }
 
-    #[enb(has_either || has_both)]
-    pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
-        match self {
-            #[either]
-            Self::Left(l2) => (l2, r),
-            #[either]
-            Self::Right(r2) => (l, r2),
-            #[neither]
-            Self::Neither => (l, r),
-            #[both]
-            Self::Both(l2, r2) => (l2, r2),
-        }
-    }
-
-    #[enb(has_either || has_both)]
-    pub fn or_default(self) -> (L, R)
-    where
-        L: Default,
-        R: Default,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => (l, R::default()),
-            #[either]
-            Self::Right(r) => (L::default(), r),
-            #[neither]
-            Self::Neither => (L::default(), R::default()),
-            #[both]
-            Self::Both(l, r) => (l, r),
-        }
-    }
-
-    #[enb(has_either || has_both)]
-    pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
-    where
-        F: FnOnce() -> L,
-        G: FnOnce() -> R,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => (l, g()),
-            #[either]
-            Self::Right(r) => (f(), r),
-            #[neither]
-            Self::Neither => (f(), g()),
-            #[both]
-            Self::Both(l, r) => (l, r),
-        }
-    }
-
     /// If the left value is already present, do nothing and return the left value.
     /// If the left value is not present, then:
     ///   - If it can "promote" the variant (`Right` => `Both`, `Neither` => `Left`), then do so.
@@ -952,5 +902,28 @@ impl<L, R> EitherOrBoth<L, R> {
         G: FnOnce(R) -> R2,
     {
         self.map(f, g)
+    }
+
+    /// An alias for `EitherOrBoth::both_or`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
+        self.both_or(l, r)
+    }
+
+    /// An alias for `EitherOrBoth::both_or_default`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or_default(self) -> (L, R)
+    where
+        L: Default,
+        R: Default,
+    {
+        self.both_or_default()
+    }
+
+    /// An alias for `EitherOrBoth::both_or_else`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
+    where
+        F: FnOnce() -> L,
+        G: FnOnce() -> R,
+    {
+        self.both_or_else(f, g)
     }
 }
