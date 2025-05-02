@@ -228,9 +228,9 @@ impl<L, R> Enb<L, R> {
             #[either]
             Self::Left(l) => l,
             #[either]
-            Self::Right(r) => panic!("Expected a Left variant, but got a right value:{:?}", r),
+            Self::Right(r) => panic!("Expected a Left value, but got a right variant:{:?}", r),
             #[neither]
-            Self::Neither => panic!("Expected a Left variant, but got a Neither variant"),
+            Self::Neither => panic!("Expected a Left value, but got a Neither variant"),
             #[both]
             Self::Both(l, _) => l,
         }
@@ -248,13 +248,31 @@ impl<L, R> Enb<L, R> {
     {
         match self {
             #[either]
-            Self::Left(l) => panic!("Expected a Right variant, but got a left value:{:?}", l),
+            Self::Left(l) => panic!("Expected a Right value, but got a left variant:{:?}", l),
             #[either]
             Self::Right(r) => r,
             #[neither]
-            Self::Neither => panic!("Expected a Right variant, but got a Neither variant"),
+            Self::Neither => panic!("Expected a Right value, but got a Neither variant"),
             #[both]
             Self::Both(_, r) => r,
+        }
+    }
+
+    #[enb(has_either || has_both)]
+    pub fn unwrap_both(self) -> (L, R)
+    where
+        L: Debug,
+        R: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => panic!("Expected a Both value, but got a left variant:{:?}", l),
+            #[either]
+            Self::Right(r) => panic!("Expected a Both value, but got a right variant:{:?}", r),
+            #[neither]
+            Self::Neither => panic!("Expected a Both value, but got a Neither variant"),
+            #[both]
+            Self::Both(l, r) => (l, r),
         }
     }
 
@@ -302,6 +320,24 @@ impl<L, R> Enb<L, R> {
         }
     }
 
+    #[enb(has_either || has_both)]
+    pub fn expect_both(self, #[allow(unused)] msg: &str) -> (L, R)
+    where
+        L: Debug,
+        R: Debug,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => panic!("{}: {:?}", msg, l),
+            #[either]
+            Self::Right(r) => panic!("{}: {:?}", msg, r),
+            #[neither]
+            Self::Neither => panic!("{}", msg),
+            #[both]
+            Self::Both(l, r) => (l, r),
+        }
+    }
+
     /// Return left value or given value.
     #[enb(has_either || has_both)]
     pub fn left_or(self, #[allow(unused)] other: L) -> L {
@@ -332,6 +368,21 @@ impl<L, R> Enb<L, R> {
         }
     }
 
+    /// Return the both values as a tuple, or the given value if either side is missing.
+    #[enb(has_either || has_both)]
+    pub fn both_or(self, #[allow(unused)] other: (L, R)) -> (L, R) {
+        match self {
+            #[either]
+            Self::Left(l) => (l, other.1),
+            #[either]
+            Self::Right(r) => (other.0, r),
+            #[neither]
+            Self::Neither => other,
+            #[both]
+            Self::Both(l, r) => (l, r),
+        }
+    }
+
     /// Return left value or default value.
     #[enb(has_either || has_both)]
     pub fn left_or_default(self) -> L
@@ -341,12 +392,10 @@ impl<L, R> Enb<L, R> {
         match self {
             #[either]
             Self::Left(l) => l,
-            #[either]
-            Self::Right(_) => L::default(),
-            #[neither]
-            Self::Neither => L::default(),
             #[both]
             Self::Both(l, _) => l,
+            #[allow(unused)]
+            _ => L::default(),
         }
     }
 
@@ -358,13 +407,30 @@ impl<L, R> Enb<L, R> {
     {
         match self {
             #[either]
-            Self::Left(_) => R::default(),
-            #[either]
             Self::Right(r) => r,
-            #[neither]
-            Self::Neither => R::default(),
             #[both]
             Self::Both(_, r) => r,
+            #[allow(unused)]
+            _ => R::default(),
+        }
+    }
+
+    /// Return a tuple of both values, or the default values if either side is missing.
+    #[enb(has_either || has_both)]
+    pub fn both_or_default(self) -> (L, R)
+    where
+        L: Default,
+        R: Default,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => (l, R::default()),
+            #[either]
+            Self::Right(r) => (L::default(), r),
+            #[neither]
+            Self::Neither => (L::default(), R::default()),
+            #[both]
+            Self::Both(l, r) => (l, r),
         }
     }
 
