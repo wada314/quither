@@ -900,6 +900,7 @@ impl<L, R> Enb<Option<L>, Option<R>> {
     }
 }
 
+/// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
     where
@@ -923,6 +924,7 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// An alias for `Either::map`. For compatibility with `itertools::Either` type.
     pub fn map_either<F, G, L2, R2>(self, f: F, g: G) -> Either<L2, R2>
     where
         F: FnOnce(L) -> L2,
@@ -931,11 +933,24 @@ impl<L, R> Either<L, R> {
         Self::map(self, f, g)
     }
 
+    /// An alias for `Either::map_with`. For compatibility with `itertools::Either` type.
     pub fn map_either_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Either<L2, R2>
     where
         F: FnOnce(Ctx, L) -> L2,
         G: FnOnce(Ctx, R) -> R2,
     {
         Self::map_with(self, ctx, f, g)
+    }
+}
+
+/// `EitherOrBoth` type exclusive methods.
+impl<L, R> EitherOrBoth<L, R> {
+    /// An alias for `EitherOrBoth::map`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn map_any<F, L2, G, R2>(self, f: F, g: G) -> EitherOrBoth<L2, R2>
+    where
+        F: FnOnce(L) -> L2,
+        G: FnOnce(R) -> R2,
+    {
+        self.map(f, g)
     }
 }
