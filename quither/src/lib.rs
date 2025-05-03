@@ -1053,7 +1053,7 @@ impl<L, R> Quither<L, R> {
                 *self = Self::Both(l, r);
             }
             #[both]
-            Self::Both(l, r) => (),
+            Self::Both(_, _) => (),
         };
         #[allow(irrefutable_let_patterns)]
         let Self::Both(l, r) = self else {
@@ -1070,6 +1070,9 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     /// This method is only available in the type which is NOT containing `Neither` variant.
     /// (This is because I'm not sure whether I should return `None` or `Some(Neither)`).
     ///
+    /// Note that for some types, this method returns a different type from the input type.
+    /// For example, `Both` type's this method returns `EitherOrBoth` type.
+    ///
     /// TODO: Needs examples.
     #[quither(!has_neither && (has_either || has_both))]
     pub fn factor_none(self) -> Option<Quither<L, R, true, false, has_both>> {
@@ -1077,11 +1080,7 @@ impl<L, R> Quither<Option<L>, Option<R>> {
             #[either]
             Self::Left(Some(l)) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
             #[either]
-            Self::Left(None) => None,
-            #[either]
             Self::Right(Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
-            #[either]
-            Self::Right(None) => None,
             #[both]
             Self::Both(Some(l), Some(r)) => {
                 Some(Quither::<L, R, true, false, has_both>::Both(l, r))
@@ -1090,8 +1089,8 @@ impl<L, R> Quither<Option<L>, Option<R>> {
             Self::Both(Some(l), None) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
             #[both]
             Self::Both(None, Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
-            #[both]
-            Self::Both(None, None) => None,
+            #[quither(has_either || has_both)]
+            _ => None,
         }
     }
 }
