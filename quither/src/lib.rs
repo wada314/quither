@@ -23,6 +23,10 @@
 //! This crate also provides an arbitrary combination types of `Either`, `Neither`, and `Both`.
 //! For example, `EitherOrBoth<L, R>` is a type that represents either a left (`Left(L)`) or right (`Right(R)`) or both (`Both(L, R)`).
 //! These types have consistent APIs (as much as possible ☺) so that you can use them interchangeably.
+//!
+//! Each combination types implements the common methods greedily, even if it's not very useful for that type itself.
+//! For example, `EitherOrNeither` type implements `is_both()` method, even if it's always returns `false`.
+//!
 
 use ::replace_with::replace_with_or_abort;
 use ::std::fmt::Debug;
@@ -970,7 +974,7 @@ impl<L, R> Quither<L, R> {
     }
 
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
-    pub fn insert_left(&mut self, l: L) -> &mut L {
+    pub fn insert_left(&mut self, #[allow(unused)] l: L) -> &mut L {
         match self {
             #[either]
             Self::Left(l) => l,
@@ -997,7 +1001,7 @@ impl<L, R> Quither<L, R> {
     }
 
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
-    pub fn insert_right(&mut self, r: R) -> &mut R {
+    pub fn insert_right(&mut self, #[allow(unused)] r: R) -> &mut R {
         match self {
             #[either]
             Self::Right(r) => r,
@@ -1024,7 +1028,11 @@ impl<L, R> Quither<L, R> {
     }
 
     #[quither(has_both)]
-    pub fn insert_both(&mut self, l: L, r: R) -> (&mut L, &mut R) {
+    pub fn insert_both(
+        &mut self,
+        #[allow(unused)] l: L,
+        #[allow(unused)] r: R,
+    ) -> (&mut L, &mut R) {
         match self {
             #[either]
             Self::Left(_) => {
@@ -1060,6 +1068,7 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     /// Factor out the `None` values out from the type.
     ///
     /// This method is only available in the type which is NOT containing `Neither` variant.
+    /// (This is because I'm not sure whether I should return `None` or `Some(Neither)`).
     ///
     /// TODO: Needs examples.
     #[quither(!has_neither && (has_either || has_both))]
@@ -1083,6 +1092,46 @@ impl<L, R> Quither<Option<L>, Option<R>> {
             Self::Both(None, Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
             #[both]
             Self::Both(None, None) => None,
+        }
+    }
+}
+
+#[quither]
+impl<L, R, E> Quither<Result<L, E>, Result<R, E>> {
+    /// Factor out the `Err` values out from the type.
+    ///
+    /// This method is only available for `Either` only type.
+    ///
+    /// TODO: Needs examples.
+    #[quither(!has_neither && has_either && !has_both)]
+    pub fn factor_error(self) -> Result<Quither<L, R>, E> {
+        match self {
+            #[either]
+            Self::Left(Ok(l)) => Ok(Quither::Left(l)),
+            #[either]
+            Self::Right(Ok(r)) => Ok(Quither::Right(r)),
+            #[either]
+            Self::Left(Err(e)) | Self::Right(Err(e)) => Err(e),
+        }
+    }
+}
+
+#[quither]
+impl<T, L, R> Quither<Result<T, L>, Result<T, R>> {
+    /// Factor out the `Ok` values out from the type.
+    ///
+    /// This method is only available for `Either` only type.
+    ///
+    /// TODO: Needs examples.
+    #[quither(!has_neither && has_either && !has_both)]
+    pub fn factor_ok(self) -> Result<T, Quither<L, R>> {
+        match self {
+            #[either]
+            Self::Left(Err(e)) => Err(Quither::Left(e)),
+            #[either]
+            Self::Right(Err(e)) => Err(Quither::Right(e)),
+            #[either]
+            Self::Left(Ok(x)) | Self::Right(Ok(x)) => Ok(x),
         }
     }
 }
