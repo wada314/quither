@@ -54,6 +54,7 @@ pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
         if !has_either && !has_both {
             // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
             ast.generics.params.clear();
+            ast.generics.where_clause = None;
         }
 
         let generated_item = quote! { #ast };

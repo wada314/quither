@@ -38,7 +38,7 @@ where
     L: Read,
     R: Read,
 {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
+    fn read(&mut self, #[allow(unused)] buf: &mut [u8]) -> IoResult<usize> {
         match self {
             #[either]
             Self::Left(l) => l.read(buf),
