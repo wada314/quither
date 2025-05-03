@@ -778,7 +778,7 @@ impl<L, R> Quither<L, R> {
     {
         match self {
             #[quither(has_either && has_both)]
-            Self::Left(l) => {
+            Self::Left(_) => {
                 // Left => Both promotion.
                 let new_r = f();
                 replace_with_or_abort(self, move |this| {
@@ -961,6 +961,60 @@ impl<L, R> Quither<L, R> {
                     let Self::Neither = this else { unreachable!() };
                     Self::Right(f())
                 });
+                let Self::Right(r) = self else { unreachable!() };
+                r
+            }
+            #[both]
+            Self::Both(_, r) => r,
+        }
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    pub fn insert_left(&mut self, l: L) -> &mut L {
+        match self {
+            #[either]
+            Self::Left(l) => l,
+            #[either]
+            Self::Right(_) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Right(r) = this else { unreachable!() };
+                    Self::Both(l, r)
+                });
+                let Self::Both(l, _) = self else {
+                    unreachable!()
+                };
+                l
+            }
+            #[neither]
+            Self::Neither => {
+                replace_with_or_abort(self, move |_| Self::Left(l));
+                let Self::Left(l) = self else { unreachable!() };
+                l
+            }
+            #[both]
+            Self::Both(l, _) => l,
+        }
+    }
+
+    #[quither((!has_neither || has_either) && (!has_either || has_both))]
+    pub fn insert_right(&mut self, r: R) -> &mut R {
+        match self {
+            #[either]
+            Self::Right(r) => r,
+            #[either]
+            Self::Left(_) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Left(l) = this else { unreachable!() };
+                    Self::Both(l, r)
+                });
+                let Self::Both(_, r) = self else {
+                    unreachable!()
+                };
+                r
+            }
+            #[neither]
+            Self::Neither => {
+                replace_with_or_abort(self, move |_| Self::Right(r));
                 let Self::Right(r) = self else { unreachable!() };
                 r
             }
