@@ -1022,6 +1022,37 @@ impl<L, R> Quither<L, R> {
             Self::Both(_, r) => r,
         }
     }
+
+    #[quither(has_both)]
+    pub fn insert_both(&mut self, l: L, r: R) -> (&mut L, &mut R) {
+        match self {
+            #[either]
+            Self::Left(_) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Left(l) = this else { unreachable!() };
+                    Self::Both(l, r)
+                });
+            }
+            #[either]
+            Self::Right(_) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Right(r) = this else { unreachable!() };
+                    Self::Both(l, r)
+                });
+            }
+            #[neither]
+            Self::Neither => {
+                *self = Self::Both(l, r);
+            }
+            #[both]
+            Self::Both(l, r) => (),
+        };
+        #[allow(irrefutable_let_patterns)]
+        let Self::Both(l, r) = self else {
+            unreachable!()
+        };
+        (l, r)
+    }
 }
 
 #[quither]
