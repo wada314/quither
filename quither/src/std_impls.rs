@@ -21,6 +21,16 @@ use ::quither_proc_macros::quither;
 #[cfg(feature = "use_std")]
 use ::std::io::{BufRead, Read, Result as IoResult};
 
+/// Implement `Read` for `Quither<L, R>` if `L` and `R` implement `Read`.
+///
+/// The implementation for `Left`, `Right` or `Neither` case are very trivial;
+/// it just returns the inner value's result directly, or returns `Ok(0)` if the variant is `Neither`.
+///
+/// The implementation for `Both` case is little more complex, and is slightly different with
+/// the `Read::chain` method. For every call to `read`, it first tries to read data from `Left`,
+/// then from `Right` if there is no data read from `Left`.
+/// (where the `Read::chain` method will never try again to read from the first reader once it
+/// returns `Ok(0)`).
 #[cfg(feature = "use_std")]
 #[quither]
 impl<L, R> Read for Quither<L, R>

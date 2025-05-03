@@ -19,14 +19,16 @@ use ::syn::visit_mut::{VisitMut, visit_expr_match_mut, visit_item_impl_mut, visi
 use ::syn::{
     BinOp, Expr, ExprBinary, ExprLit, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident,
     ImplItem, ItemImpl, Lit, LitBool, Path, PathArguments, PathSegment, Type, TypePath, UnOp,
-    parse_macro_input,
+    parse, parse_macro_input,
 };
 
 #[proc_macro_attribute]
-pub fn quither(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args_expr_opt: Option<Expr> = (!args.is_empty()).then(|| parse(args).unwrap());
+
     let ast = parse_macro_input!(input as ItemImpl);
     let mut results = Vec::<TokenStream2>::new();
-    for (e, n, b) in [
+    for (has_either, has_neither, has_both) in [
         (true, false, false),
         (false, true, false),
         (false, false, true),
@@ -35,33 +37,32 @@ pub fn quither(_args: TokenStream, input: TokenStream) -> TokenStream {
         (false, true, true),
         (true, true, true),
     ] {
-        results.push(expand_quither(ast.clone(), e, n, b));
+        let mut ast = ast.clone();
+        let mut processor = CodeProcessor {
+            has_either,
+            has_neither,
+            has_both,
+        };
+        if let Some(false) = args_expr_opt
+            .as_ref()
+            .and_then(|args_expr| processor.check_quither_attr_condition(&args_expr))
+        {
+            continue;
+        }
+        processor.visit_item_impl_mut(&mut ast);
+
+        if !has_either && !has_both {
+            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+            ast.generics.params.clear();
+        }
+
+        let generated_item = quote! { #ast };
+        results.push(generated_item);
     }
     quote! {
         #(#results)*
     }
     .into()
-}
-
-fn expand_quither(
-    mut input: ItemImpl,
-    has_either: bool,
-    has_neither: bool,
-    has_both: bool,
-) -> TokenStream2 {
-    let mut replacer = CodeProcessor {
-        has_either,
-        has_neither,
-        has_both,
-    };
-    replacer.visit_item_impl_mut(&mut input);
-
-    if !has_either && !has_both {
-        // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
-        input.generics.params.clear();
-    }
-
-    quote! { #input }
 }
 
 struct CodeProcessor {
