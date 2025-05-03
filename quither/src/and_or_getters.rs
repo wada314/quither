@@ -205,3 +205,54 @@ impl<L, R> Quither<L, R> {
         }
     }
 }
+
+/// `Either` type exclusive methods.
+impl<L, R> Either<L, R> {
+    pub fn either<F, G, T>(self, f: F, g: G) -> T
+    where
+        F: FnOnce(L) -> T,
+        G: FnOnce(R) -> T,
+    {
+        match self {
+            Either::Left(l) => f(l),
+            Either::Right(r) => g(r),
+        }
+    }
+
+    pub fn either_with<Ctx, F, G, T>(self, ctx: Ctx, f: F, g: G) -> T
+    where
+        F: FnOnce(Ctx, L) -> T,
+        G: FnOnce(Ctx, R) -> T,
+    {
+        match self {
+            Either::Left(l) => f(ctx, l),
+            Either::Right(r) => g(ctx, r),
+        }
+    }
+}
+
+/// `EitherOrBoth` type exclusive methods.
+impl<L, R> EitherOrBoth<L, R> {
+    /// An alias for `EitherOrBoth::both_or`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
+        self.both_or(l, r)
+    }
+
+    /// An alias for `EitherOrBoth::both_or_default`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or_default(self) -> (L, R)
+    where
+        L: Default,
+        R: Default,
+    {
+        self.both_or_default()
+    }
+
+    /// An alias for `EitherOrBoth::both_or_else`. For compatibility with `itertools::EitherOrBoth` type.
+    pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
+    where
+        F: FnOnce() -> L,
+        G: FnOnce() -> R,
+    {
+        self.both_or_else(f, g)
+    }
+}

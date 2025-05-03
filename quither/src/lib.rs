@@ -174,28 +174,6 @@ impl<T> Quither<T, T> {}
 
 /// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
-    pub fn either<F, G, T>(self, f: F, g: G) -> T
-    where
-        F: FnOnce(L) -> T,
-        G: FnOnce(R) -> T,
-    {
-        match self {
-            Either::Left(l) => f(l),
-            Either::Right(r) => g(r),
-        }
-    }
-
-    pub fn either_with<Ctx, F, G, T>(self, ctx: Ctx, f: F, g: G) -> T
-    where
-        F: FnOnce(Ctx, L) -> T,
-        G: FnOnce(Ctx, R) -> T,
-    {
-        match self {
-            Either::Left(l) => f(ctx, l),
-            Either::Right(r) => g(ctx, r),
-        }
-    }
-
     pub fn either_into<T>(self) -> T
     where
         L: Into<T>,
@@ -205,24 +183,6 @@ impl<L, R> Either<L, R> {
             Either::Left(l) => l.into(),
             Either::Right(r) => r.into(),
         }
-    }
-
-    /// An alias for `Either::map`. For compatibility with `itertools::Either` type.
-    pub fn map_either<F, G, L2, R2>(self, f: F, g: G) -> Either<L2, R2>
-    where
-        F: FnOnce(L) -> L2,
-        G: FnOnce(R) -> R2,
-    {
-        Self::map2(self, f, g)
-    }
-
-    /// An alias for `Either::map_with`. For compatibility with `itertools::Either` type.
-    pub fn map_either_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Either<L2, R2>
-    where
-        F: FnOnce(Ctx, L) -> L2,
-        G: FnOnce(Ctx, R) -> R2,
-    {
-        Self::map_with(self, ctx, f, g)
     }
 }
 
@@ -277,40 +237,5 @@ impl<T, L, R> Either<(L, T), (R, T)> {
             Either::Left((l, t)) => (t, Either::Left(l)),
             Either::Right((r, t)) => (t, Either::Right(r)),
         }
-    }
-}
-
-/// `EitherOrBoth` type exclusive methods.
-impl<L, R> EitherOrBoth<L, R> {
-    /// An alias for `EitherOrBoth::map`. For compatibility with `itertools::EitherOrBoth` type.
-    pub fn map_any<F, L2, G, R2>(self, f: F, g: G) -> EitherOrBoth<L2, R2>
-    where
-        F: FnOnce(L) -> L2,
-        G: FnOnce(R) -> R2,
-    {
-        self.map2(f, g)
-    }
-
-    /// An alias for `EitherOrBoth::both_or`. For compatibility with `itertools::EitherOrBoth` type.
-    pub fn or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
-        self.both_or(l, r)
-    }
-
-    /// An alias for `EitherOrBoth::both_or_default`. For compatibility with `itertools::EitherOrBoth` type.
-    pub fn or_default(self) -> (L, R)
-    where
-        L: Default,
-        R: Default,
-    {
-        self.both_or_default()
-    }
-
-    /// An alias for `EitherOrBoth::both_or_else`. For compatibility with `itertools::EitherOrBoth` type.
-    pub fn or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
-    where
-        F: FnOnce() -> L,
-        G: FnOnce() -> R,
-    {
-        self.both_or_else(f, g)
     }
 }
