@@ -505,7 +505,7 @@ impl<L, R> Quither<L, R> {
     }
 
     #[quither(has_either || has_both)]
-    pub fn map<F, G, L2, R2>(self, f: F, g: G) -> Quither<L2, R2>
+    pub fn map2<F, G, L2, R2>(self, f: F, g: G) -> Quither<L2, R2>
     where
         F: FnOnce(L) -> L2,
         G: FnOnce(R) -> R2,
@@ -1095,6 +1095,49 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     }
 }
 
+#[quither]
+impl<T> Quither<T, T> {
+    /// Map the value of the type.
+    ///
+    /// Note for the type including the `Both` variant, the parameter closure
+    /// `F` is called twice, so it is not `FnOnce` but `Fn`.
+    #[quither(has_either && !has_both)]
+    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
+    where
+        F: FnOnce(T) -> T2,
+    {
+        match self {
+            #[either]
+            Quither::Left(l) => Quither::Left(f(l)),
+            #[either]
+            Quither::Right(r) => Quither::Right(f(r)),
+            #[neither]
+            Quither::Neither => Quither::Neither,
+        }
+    }
+
+    /// Map the value of the type.
+    ///
+    /// Note for the type including the `Both` variant, the parameter closure
+    /// `F` is called twice, so it is not `FnOnce` but `Fn`.
+    #[quither(has_either && has_both)]
+    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
+    where
+        F: Fn(T) -> T2,
+    {
+        match self {
+            #[either]
+            Quither::Left(l) => Quither::Left(f(l)),
+            #[either]
+            Quither::Right(r) => Quither::Right(f(r)),
+            #[neither]
+            Quither::Neither => Quither::Neither,
+            #[both]
+            Quither::Both(l, r) => Quither::Both(f(l), f(r)),
+        }
+    }
+}
+
 /// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
@@ -1136,7 +1179,7 @@ impl<L, R> Either<L, R> {
         F: FnOnce(L) -> L2,
         G: FnOnce(R) -> R2,
     {
-        Self::map(self, f, g)
+        Self::map2(self, f, g)
     }
 
     /// An alias for `Either::map_with`. For compatibility with `itertools::Either` type.
@@ -1146,6 +1189,15 @@ impl<L, R> Either<L, R> {
         G: FnOnce(Ctx, R) -> R2,
     {
         Self::map_with(self, ctx, f, g)
+    }
+}
+
+impl<T> Either<T, T> {
+    pub fn into_inner(self) -> T {
+        match self {
+            Either::Left(l) => l,
+            Either::Right(r) => r,
+        }
     }
 }
 
@@ -1202,7 +1254,7 @@ impl<L, R> EitherOrBoth<L, R> {
         F: FnOnce(L) -> L2,
         G: FnOnce(R) -> R2,
     {
-        self.map(f, g)
+        self.map2(f, g)
     }
 
     /// An alias for `EitherOrBoth::both_or`. For compatibility with `itertools::EitherOrBoth` type.
