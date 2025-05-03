@@ -35,6 +35,7 @@ mod as_ref;
 mod factor;
 mod get_or_insert;
 mod getters;
+mod into;
 mod map;
 
 use ::quither_proc_macros::quither;
@@ -83,60 +84,6 @@ pub enum Quither<L, R> {
     Left(L),
     Right(R),
     Both(L, R),
-}
-
-#[quither]
-impl<L, R> Quither<L, R> {
-    #[quither(!has_neither)]
-    pub fn into_left(self) -> L
-    where
-        R: Into<L>,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => l,
-            #[either]
-            Self::Right(r) => r.into(),
-            #[neither]
-            Self::Neither => unreachable!(),
-            #[both]
-            Self::Both(l, _) => l,
-        }
-    }
-
-    #[quither(!has_neither)]
-    pub fn into_right(self) -> R
-    where
-        L: Into<R>,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => l.into(),
-            #[either]
-            Self::Right(r) => r,
-            #[neither]
-            Self::Neither => unreachable!(),
-            #[both]
-            Self::Both(_, r) => r,
-        }
-    }
-}
-
-#[quither]
-impl<T> Quither<T, T> {}
-
-/// `Either` type exclusive methods.
-impl<L, R> Either<L, R> {
-    pub fn either_into<T>(self) -> T
-    where
-        L: Into<T>,
-        R: Into<T>,
-    {
-        match self {
-            Either::Left(l) => l.into(),
-            Either::Right(r) => r.into(),
-        }
-    }
 }
 
 impl<T> Either<T, T> {
