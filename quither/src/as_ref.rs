@@ -16,6 +16,13 @@ use super::*;
 use ::core::ops::{Deref, DerefMut};
 use ::core::pin::Pin;
 use ::quither_proc_macros::quither;
+// CStr is available in core too after rustc version 1.64.0.
+#[cfg(feature = "use_std")]
+use ::std::ffi::CStr;
+#[cfg(feature = "use_std")]
+use ::std::ffi::OsStr;
+#[cfg(feature = "use_std")]
+use ::std::path::Path;
 
 #[quither]
 impl<L, R> Quither<L, R> {
@@ -133,3 +140,103 @@ impl<L, R> Quither<L, R> {
         }
     }
 }
+
+impl<T, L, R> AsRef<T> for Either<L, R>
+where
+    L: AsRef<T>,
+    R: AsRef<T>,
+{
+    fn as_ref(&self) -> &T {
+        match self {
+            Self::Left(l) => l.as_ref(),
+            Self::Right(r) => r.as_ref(),
+        }
+    }
+}
+
+impl<T, L, R> AsMut<T> for Either<L, R>
+where
+    L: AsMut<T>,
+    R: AsMut<T>,
+{
+    fn as_mut(&mut self) -> &mut T {
+        match self {
+            Self::Left(l) => l.as_mut(),
+            Self::Right(r) => r.as_mut(),
+        }
+    }
+}
+
+impl<T, L, R> AsRef<[T]> for Either<L, R>
+where
+    L: AsRef<[T]>,
+    R: AsRef<[T]>,
+{
+    fn as_ref(&self) -> &[T] {
+        match self {
+            Self::Left(l) => l.as_ref(),
+            Self::Right(r) => r.as_ref(),
+        }
+    }
+}
+
+impl<T, L, R> AsMut<[T]> for Either<L, R>
+where
+    L: AsMut<[T]>,
+    R: AsMut<[T]>,
+{
+    fn as_mut(&mut self) -> &mut [T] {
+        match self {
+            Self::Left(l) => l.as_mut(),
+            Self::Right(r) => r.as_mut(),
+        }
+    }
+}
+
+macro_rules! impl_as_ref_and_mut {
+    ($target:ty $(, $attrs:meta)*) => {
+        $(#[$attrs])*
+        impl<L, R> AsRef<$target> for Either<L, R>
+        where
+            L: AsRef<$target>,
+            R: AsRef<$target>,
+        {
+            fn as_ref(&self) -> &$target {
+                match self {
+                    Self::Left(l) => l.as_ref(),
+                    Self::Right(r) => r.as_ref(),
+                }
+            }
+        }
+        $(#[$attrs])*
+        impl<L, R> AsMut<$target> for Either<L, R>
+        where
+            L: AsMut<$target>,
+            R: AsMut<$target>,
+        {
+            fn as_mut(&mut self) -> &mut $target {
+                match self {
+                    Self::Left(l) => l.as_mut(),
+                    Self::Right(r) => r.as_mut(),
+                }
+            }
+        }
+    };
+}
+
+impl_as_ref_and_mut!(str);
+impl_as_ref_and_mut!(
+    Path,
+    cfg(feature = "use_std"),
+    doc = "Needs crate feature `use_std`"
+);
+impl_as_ref_and_mut!(
+    CStr,
+    cfg(feature = "use_std"),
+    doc = "Needs crate feature `use_std`"
+);
+impl_as_ref_and_mut!(
+    OsStr,
+    cfg(feature = "use_std"),
+    doc = "Needs crate feature `use_std`"
+);

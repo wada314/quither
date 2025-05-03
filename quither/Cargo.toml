@@ -8,5 +8,5 @@ replace_with = "0.1.7"
 quither-proc-macros = { path = "../quither-proc-macros" }
 
 [features]
-default = []
+default = ["use_std"]
 use_std = []
