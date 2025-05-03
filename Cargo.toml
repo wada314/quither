@@ -1,2 +1,3 @@
 [workspace]
 members = ["quither", "quither-proc-macros"]
+resolver = "3"

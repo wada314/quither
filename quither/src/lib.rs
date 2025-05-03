@@ -30,13 +30,11 @@
 
 #![cfg_attr(not(feature = "use_std"), no_std)]
 
+mod as_ref;
 mod getters;
 
-use ::core::ops::{Deref, DerefMut};
-use ::core::pin::Pin;
-use ::replace_with::replace_with_or_abort;
-
 use ::quither_proc_macros::quither;
+use ::replace_with::replace_with_or_abort;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
@@ -288,120 +286,6 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Creates a new variant with references to the contained values.
-    #[quither(has_either || has_neither || has_both)]
-    pub fn as_ref(&self) -> Quither<&L, &R> {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l),
-            #[either]
-            Self::Right(r) => Quither::Right(r),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l, r),
-        }
-    }
-
-    /// Creates a new variant with mutable references to the contained values.
-    #[quither(has_either || has_neither || has_both)]
-    pub fn as_mut(&mut self) -> Quither<&mut L, &mut R> {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l),
-            #[either]
-            Self::Right(r) => Quither::Right(r),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l, r),
-        }
-    }
-
-    /// Creates a new pinned variant with references to the contained values.
-    #[quither(has_either || has_neither || has_both)]
-    pub fn as_pin_ref(self: Pin<&Self>) -> Quither<Pin<&L>, Pin<&R>> {
-        // SAFETY: This is safe because:
-        // 1. We never move the inner values - we only create a new reference to them
-        // 2. The original Pin<&Self> guarantees that the original data won't move
-        // 3. We're maintaining the pinning invariant by wrapping the references in Pin
-        // 4. The lifetime of the output references is tied to the input lifetime
-        #[allow(unused)]
-        unsafe {
-            match self.get_ref() {
-                #[either]
-                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
-                #[either]
-                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
-                #[neither]
-                Self::Neither => Quither::Neither,
-                #[both]
-                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
-            }
-        }
-    }
-
-    /// Creates a new pinned variant with mutable references to the contained values.
-    #[quither(has_either || has_neither || has_both)]
-    pub fn as_pin_mut(self: Pin<&mut Self>) -> Quither<Pin<&mut L>, Pin<&mut R>> {
-        // SAFETY: This is safe because:
-        // 1. We never move the inner values out of the pin
-        // 2. We're creating new Pin instances from references to pinned data
-        // 3. The original Pin<&mut Self> guarantees unique access
-        // 4. We maintain the pinning invariant by wrapping the mutable references in Pin
-        // 5. get_unchecked_mut is safe here as we have exclusive access via Pin<&mut Self>
-        unsafe {
-            match self.get_unchecked_mut() {
-                #[either]
-                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
-                #[either]
-                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
-                #[neither]
-                Self::Neither => Quither::Neither,
-                #[both]
-                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
-            }
-        }
-    }
-
-    /// Returns a new value using the `Deref` trait for `L` and `R` values.
-    #[quither(has_either || has_both)]
-    pub fn as_deref(&self) -> Quither<&L::Target, &R::Target>
-    where
-        L: Deref,
-        R: Deref,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.deref()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.deref()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l.deref(), r.deref()),
-        }
-    }
-
-    /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
-    #[quither(has_either || has_both)]
-    pub fn as_deref_mut(&mut self) -> Quither<&mut L::Target, &mut R::Target>
-    where
-        L: DerefMut,
-        R: DerefMut,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.deref_mut()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.deref_mut()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l.deref_mut(), r.deref_mut()),
-        }
-    }
-
     /// Apply the function `f` on the value in the left position if it is present,
     /// and then rewrap the result in a same variant of the new type.
     #[quither(has_either || has_both)]
@@ -451,6 +335,7 @@ impl<L, R> Quither<L, R> {
     pub fn ensure_left(&mut self, l: L) -> &mut L {
         self.ensure_left_with(move || l)
     }
+
     #[quither(!has_neither || has_either)]
     pub fn ensure_right(&mut self, r: R) -> &mut R {
         self.ensure_right_with(move || r)
