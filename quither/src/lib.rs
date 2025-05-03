@@ -34,6 +34,8 @@ mod and_or_getters;
 mod as_ref;
 mod get_or_insert;
 mod getters;
+mod map;
+
 use ::quither_proc_macros::quither;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
@@ -84,58 +86,6 @@ pub enum Quither<L, R> {
 
 #[quither]
 impl<L, R> Quither<L, R> {
-    #[quither(has_either || has_both)]
-    pub fn map2<F, G, L2, R2>(self, f: F, g: G) -> Quither<L2, R2>
-    where
-        F: FnOnce(L) -> L2,
-        G: FnOnce(R) -> R2,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(f(l)),
-            #[either]
-            Self::Right(r) => Quither::Right(g(r)),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(f(l), g(r)),
-        }
-    }
-
-    #[quither(has_either || has_both)]
-    pub fn map_left<F, L2>(self, f: F) -> Quither<L2, R>
-    where
-        F: FnOnce(L) -> L2,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(f(l)),
-            #[either]
-            Self::Right(r) => Quither::Right(r),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(f(l), r),
-        }
-    }
-
-    #[quither(has_either || has_both)]
-    pub fn map_right<F, R2>(self, f: F) -> Quither<L, R2>
-    where
-        F: FnOnce(R) -> R2,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l),
-            #[either]
-            Self::Right(r) => Quither::Right(f(r)),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l, f(r)),
-        }
-    }
-
     #[quither(!has_neither)]
     pub fn into_left(self) -> L
     where
@@ -167,41 +117,6 @@ impl<L, R> Quither<L, R> {
             Self::Neither => unreachable!(),
             #[both]
             Self::Both(_, r) => r,
-        }
-    }
-
-    #[quither(has_either && !has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
-    where
-        F: FnOnce(Ctx, L) -> L2,
-        G: FnOnce(Ctx, R) -> R2,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(f(ctx, l)),
-            #[either]
-            Self::Right(r) => Quither::Right(g(ctx, r)),
-            #[neither]
-            Self::Neither => Quither::Neither,
-        }
-    }
-
-    #[quither(has_either && has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
-    where
-        Ctx: Clone,
-        F: FnOnce(Ctx, L) -> L2,
-        G: FnOnce(Ctx, R) -> R2,
-    {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(f(ctx, l)),
-            #[either]
-            Self::Right(r) => Quither::Right(g(ctx, r)),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
         }
     }
 
@@ -255,47 +170,7 @@ impl<L, R> Quither<Option<L>, Option<R>> {
 }
 
 #[quither]
-impl<T> Quither<T, T> {
-    /// Map the value of the type.
-    ///
-    /// Note for the type including the `Both` variant, the parameter closure
-    /// `F` is called twice, so it is not `FnOnce` but `Fn`.
-    #[quither(has_either && !has_both)]
-    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
-    where
-        F: FnOnce(T) -> T2,
-    {
-        match self {
-            #[either]
-            Quither::Left(l) => Quither::Left(f(l)),
-            #[either]
-            Quither::Right(r) => Quither::Right(f(r)),
-            #[neither]
-            Quither::Neither => Quither::Neither,
-        }
-    }
-
-    /// Map the value of the type.
-    ///
-    /// Note for the type including the `Both` variant, the parameter closure
-    /// `F` is called twice, so it is not `FnOnce` but `Fn`.
-    #[quither(has_either && has_both)]
-    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
-    where
-        F: Fn(T) -> T2,
-    {
-        match self {
-            #[either]
-            Quither::Left(l) => Quither::Left(f(l)),
-            #[either]
-            Quither::Right(r) => Quither::Right(f(r)),
-            #[neither]
-            Quither::Neither => Quither::Neither,
-            #[both]
-            Quither::Both(l, r) => Quither::Both(f(l), f(r)),
-        }
-    }
-}
+impl<T> Quither<T, T> {}
 
 /// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
