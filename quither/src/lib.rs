@@ -37,8 +37,7 @@ mod get_or_insert;
 mod getters;
 mod into;
 mod map;
-
-use ::quither_proc_macros::quither;
+mod std_impls;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
