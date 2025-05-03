@@ -28,10 +28,12 @@
 //! For example, `EitherOrNeither` type implements `is_both()` method, even if it's always returns `false`.
 //!
 
+#![cfg_attr(not(feature = "use_std"), no_std)]
+
+use ::core::fmt::Debug;
+use ::core::ops::{Deref, DerefMut};
+use ::core::pin::Pin;
 use ::replace_with::replace_with_or_abort;
-use ::std::fmt::Debug;
-use ::std::ops::{Deref, DerefMut};
-use ::std::pin::Pin;
 
 use ::quither_proc_macros::quither;
 
@@ -1060,6 +1062,22 @@ impl<L, R> Quither<L, R> {
             unreachable!()
         };
         (l, r)
+    }
+
+    /// Factor out the `Neither` variant out from the type, converting the type into
+    /// `Option<NewType>>`, where `NewType` is the type of the type excluding the `Neither` variant.
+    #[quither(has_neither && (has_either || has_both))]
+    pub fn factor_neither(self) -> Option<Quither<L, R, has_either, false, has_both>> {
+        match self {
+            #[either]
+            Self::Left(l) => Some(Quither::<L, R, has_either, false, has_both>::Left(l)),
+            #[either]
+            Self::Right(r) => Some(Quither::<L, R, has_either, false, has_both>::Right(r)),
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(l, r) => Some(Quither::<L, R, has_either, false, has_both>::Both(l, r)),
+        }
     }
 }
 
