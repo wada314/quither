@@ -25,7 +25,7 @@
 //! These types have consistent APIs (as much as possible ☺) so that you can use them interchangeably.
 //!
 //! Each combination types implements the common methods greedily, even if it's not very useful for that type itself.
-//! For example, `EitherOrNeither` type implements `is_both()` method, even if it's always returns `false`.
+//! For example, `EitherOrNeither` type implements `is_both()` method, even if it always returns `false`.
 //!
 
 #![cfg_attr(not(feature = "use_std"), no_std)]
