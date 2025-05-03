@@ -1095,46 +1095,6 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     }
 }
 
-#[quither]
-impl<L, R, E> Quither<Result<L, E>, Result<R, E>> {
-    /// Factor out the `Err` values out from the type.
-    ///
-    /// This method is only available for `Either` only type.
-    ///
-    /// TODO: Needs examples.
-    #[quither(!has_neither && has_either && !has_both)]
-    pub fn factor_error(self) -> Result<Quither<L, R>, E> {
-        match self {
-            #[either]
-            Self::Left(Ok(l)) => Ok(Quither::Left(l)),
-            #[either]
-            Self::Right(Ok(r)) => Ok(Quither::Right(r)),
-            #[either]
-            Self::Left(Err(e)) | Self::Right(Err(e)) => Err(e),
-        }
-    }
-}
-
-#[quither]
-impl<T, L, R> Quither<Result<T, L>, Result<T, R>> {
-    /// Factor out the `Ok` values out from the type.
-    ///
-    /// This method is only available for `Either` only type.
-    ///
-    /// TODO: Needs examples.
-    #[quither(!has_neither && has_either && !has_both)]
-    pub fn factor_ok(self) -> Result<T, Quither<L, R>> {
-        match self {
-            #[either]
-            Self::Left(Err(e)) => Err(Quither::Left(e)),
-            #[either]
-            Self::Right(Err(e)) => Err(Quither::Right(e)),
-            #[either]
-            Self::Left(Ok(x)) | Self::Right(Ok(x)) => Ok(x),
-        }
-    }
-}
-
 /// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
     pub fn either<F, G, T>(self, f: F, g: G) -> T
@@ -1186,6 +1146,51 @@ impl<L, R> Either<L, R> {
         G: FnOnce(Ctx, R) -> R2,
     {
         Self::map_with(self, ctx, f, g)
+    }
+}
+
+impl<L, R, E> Either<Result<L, E>, Result<R, E>> {
+    /// Factor out the `Err` values from the type.
+    ///
+    /// This method is only available for the `Either` type.
+    pub fn factor_error(self) -> Result<Either<L, R>, E> {
+        match self {
+            Either::Left(Ok(l)) => Ok(Either::Left(l)),
+            Either::Right(Ok(r)) => Ok(Either::Right(r)),
+            Either::Left(Err(e)) | Either::Right(Err(e)) => Err(e),
+        }
+    }
+}
+
+impl<T, L, R> Either<Result<T, L>, Result<T, R>> {
+    /// Factor out the `Ok` values from the type.
+    ///
+    /// This method is only available for the `Either` type.
+    pub fn factor_ok(self) -> Result<T, Either<L, R>> {
+        match self {
+            Either::Left(Err(e)) => Err(Either::Left(e)),
+            Either::Right(Err(e)) => Err(Either::Right(e)),
+            Either::Left(Ok(x)) | Either::Right(Ok(x)) => Ok(x),
+        }
+    }
+}
+
+impl<T, L, R> Either<(T, L), (T, R)> {
+    pub fn factor_first(self) -> (T, Either<L, R>) {
+        match self {
+            Either::Left((t, l)) => (t, Either::Left(l)),
+            Either::Right((t, r)) => (t, Either::Right(r)),
+        }
+    }
+}
+
+impl<T, L, R> Either<(L, T), (R, T)> {
+    /// Factor out the second value (T) from the tuple, returning (T, Either<L, R>).
+    pub fn factor_second(self) -> (T, Either<L, R>) {
+        match self {
+            Either::Left((l, t)) => (t, Either::Left(l)),
+            Either::Right((r, t)) => (t, Either::Right(r)),
+        }
     }
 }
 
