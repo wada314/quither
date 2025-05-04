@@ -188,7 +188,7 @@ impl CodeProcessor {
 
     fn replace_quither_type_definition(&self, ident: &mut Ident, params: &mut Generics) {
         if !self.has_either && !self.has_both {
-            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+            // For `Neither` type, we need to remove the `<L, R>` params after `impl`.
             params.params.clear();
             params.where_clause = None;
         }
