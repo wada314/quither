@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use ::proc_macro::TokenStream;
-use ::proc_macro2::{Span, TokenStream as TokenStream2};
+use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::spanned::Spanned;
 use ::syn::visit_mut::{
@@ -23,8 +23,7 @@ use ::syn::visit_mut::{
 use ::syn::{
     BinOp, Block, Expr, ExprBinary, ExprBlock, ExprLit, ExprParen, ExprPath, ExprUnary,
     GenericArgument, Generics, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path,
-    PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, parse, parse_macro_input, parse_quote,
-    parse_quote_spanned,
+    PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, parse, parse_macro_input,
 };
 
 #[proc_macro_attribute]
@@ -337,6 +336,8 @@ where
 
 #[test]
 fn test_quither_condition_value() {
+    use ::syn::parse_quote;
+
     let cp = CodeProcessor {
         has_either: true,
         has_neither: false,
@@ -362,6 +363,9 @@ fn test_quither_condition_value() {
 
 #[test]
 fn test_visit_path_mut() {
+    use ::proc_macro2::Span;
+    use ::syn::parse_quote_spanned;
+
     let mut cp = CodeProcessor {
         has_either: true,
         has_neither: false,

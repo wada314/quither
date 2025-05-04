@@ -91,26 +91,29 @@ where
 #[quither]
 pub struct IterQuither<L, R>(Quither<L, R>);
 
-#[quither(!has_both || has_either)]
+#[quither]
 impl<L, R> Iterator for IterQuither<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    type Item = Quither<L::Item, R::Item>;
+    type Item = Quither<L::Item, R::Item, { has_either || has_both }, has_neither, has_both>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.0 {
             #[either]
-            Quither::Left(l) => l.next().map(Quither::Left),
+            Quither::Left(l) => l.next().map(Self::Item::Left),
             #[either]
-            Quither::Right(r) => r.next().map(Quither::Right),
+            Quither::Right(r) => r.next().map(Self::Item::Right),
             #[neither]
             Quither::Neither => None,
             #[both]
-            Quither::Both(l, r) => {
-                todo!()
-            }
+            Quither::Both(l, r) => match (l.next(), r.next()) {
+                (Some(l), Some(r)) => Some(Self::Item::Both(l, r)),
+                (Some(l), None) => Some(Self::Item::Left(l)),
+                (None, Some(r)) => Some(Self::Item::Right(r)),
+                (None, None) => None,
+            },
         }
     }
 }
