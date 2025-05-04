@@ -42,22 +42,26 @@ mod std_impls;
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
 
 /// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) value.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Either<L, R> {
     Left(L),
     Right(R),
 }
 
 /// An enum that represents a single `Neither` value.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Neither {
     Neither,
 }
 
 /// An enum that represents a pair of values (`Both(L, R)`).
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Both<L, R> {
     Both(L, R),
 }
 
 /// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) or neither (`Neither`).
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EitherOrNeither<L, R> {
     Neither,
     Left(L),
@@ -65,6 +69,7 @@ pub enum EitherOrNeither<L, R> {
 }
 
 /// An enum that represents either a left (`Left(L)`) or right (`Right(R)`) or both (`Both(L, R)`).
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EitherOrBoth<L, R> {
     Left(L),
     Right(R),
@@ -72,12 +77,14 @@ pub enum EitherOrBoth<L, R> {
 }
 
 /// An enum that represents a single `Neither` value or a pair of values (`Both(L, R)`).
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NeitherOrBoth<L, R> {
     Neither,
     Both(L, R),
 }
 
 /// An enum that represents either an empty value, left value, right value, or both values.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Quither<L, R> {
     Neither,
     Left(L),
