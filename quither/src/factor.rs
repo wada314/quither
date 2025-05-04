@@ -46,47 +46,19 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     pub fn factor_none(
         self,
     ) -> Option<Quither<L, R, { has_both || has_either }, has_neither, has_both>> {
+        #[allow(unused)]
+        type Quither2<L, R> = Quither<L, R, { has_both || has_either }, has_neither, has_both>;
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Quither::<
-                L,
-                R,
-                { has_both || has_either },
-                has_neither,
-                has_both,
-            >::Left(l)),
+            Self::Left(Some(l)) => Some(Quither2::Left(l)),
             #[either]
-            Self::Right(Some(r)) => Some(Quither::<
-                L,
-                R,
-                { has_both || has_either },
-                has_neither,
-                has_both,
-            >::Right(r)),
+            Self::Right(Some(r)) => Some(Quither2::Right(r)),
             #[both]
-            Self::Both(Some(l), Some(r)) => Some(Quither::<
-                L,
-                R,
-                { has_both || has_either },
-                has_neither,
-                has_both,
-            >::Both(l, r)),
+            Self::Both(Some(l), Some(r)) => Some(Quither2::Both(l, r)),
             #[both]
-            Self::Both(Some(l), None) => Some(Quither::<
-                L,
-                R,
-                { has_both || has_either },
-                has_neither,
-                has_both,
-            >::Left(l)),
+            Self::Both(Some(l), None) => Some(Quither2::Left(l)),
             #[both]
-            Self::Both(None, Some(r)) => Some(Quither::<
-                L,
-                R,
-                { has_both || has_either },
-                has_neither,
-                has_both,
-            >::Right(r)),
+            Self::Both(None, Some(r)) => Some(Quither2::Right(r)),
             _ => None,
         }
     }

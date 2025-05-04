@@ -18,11 +18,11 @@ use ::quote::quote;
 use ::syn::spanned::Spanned;
 use ::syn::visit_mut::{
     VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
-    visit_item_struct_mut, visit_path_mut,
+    visit_item_struct_mut, visit_item_type_mut, visit_path_mut,
 };
 use ::syn::{
     BinOp, Block, Expr, ExprBinary, ExprBlock, ExprLit, ExprParen, ExprPath, ExprUnary,
-    GenericArgument, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path,
+    GenericArgument, Generics, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path,
     PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, parse, parse_macro_input, parse_quote,
     parse_quote_spanned,
 };
@@ -97,21 +97,12 @@ impl VisitMut for CodeProcessor {
 
     fn visit_item_struct_mut(&mut self, item_struct: &mut ItemStruct) {
         visit_item_struct_mut(self, item_struct);
+        self.replace_quither_type_definition(&mut item_struct.ident, &mut item_struct.generics);
+    }
 
-        if !self.has_either && !self.has_both {
-            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
-            item_struct.generics.params.clear();
-            item_struct.generics.where_clause = None;
-        }
-
-        let ident_str = item_struct.ident.to_string();
-        if let Some(_) = ident_str.find("Quither") {
-            let new_ident_str = ident_str.replace(
-                "Quither",
-                Self::quither_name_gen((self.has_either, self.has_neither, self.has_both)),
-            );
-            item_struct.ident = Ident::new(&new_ident_str, item_struct.ident.span());
-        }
+    fn visit_item_type_mut(&mut self, item_type: &mut syn::ItemType) {
+        visit_item_type_mut(self, item_type);
+        self.replace_quither_type_definition(&mut item_type.ident, &mut item_type.generics);
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
@@ -152,7 +143,7 @@ impl VisitMut for CodeProcessor {
 }
 
 impl CodeProcessor {
-    fn replace_quither_path_segment<F>(&mut self, segment: &mut PathSegment, new_name_gen: F)
+    fn replace_quither_path_segment<F>(&self, segment: &mut PathSegment, new_name_gen: F)
     where
         F: FnOnce(&str) -> String,
     {
@@ -196,7 +187,24 @@ impl CodeProcessor {
         }
     }
 
-    fn replace_has_quither_expr(&mut self, expr: &mut Expr) {
+    fn replace_quither_type_definition(&self, ident: &mut Ident, params: &mut Generics) {
+        if !self.has_either && !self.has_both {
+            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+            params.params.clear();
+            params.where_clause = None;
+        }
+
+        let ident_str = ident.to_string();
+        if let Some(_) = ident_str.find("Quither") {
+            let new_ident_str = ident_str.replace(
+                "Quither",
+                Self::quither_name_gen((self.has_either, self.has_neither, self.has_both)),
+            );
+            *ident = Ident::new(&new_ident_str, ident.span());
+        }
+    }
+
+    fn replace_has_quither_expr(&self, expr: &mut Expr) {
         let Expr::Path(ExprPath { path, .. }) = expr else {
             return;
         };
