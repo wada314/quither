@@ -15,18 +15,21 @@
 use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
-use ::syn::visit_mut::{VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_path_mut};
+use ::syn::visit_mut::{
+    VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_item_mut, visit_item_struct_mut,
+    visit_path_mut,
+};
 use ::syn::{
     BinOp, Expr, ExprBinary, ExprLit, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident,
-    ImplItem, ItemImpl, Lit, LitBool, Path, PathArguments, PathSegment, Type, TypePath, UnOp,
-    parse, parse_macro_input,
+    ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path, PathArguments, PathSegment, Type,
+    TypePath, UnOp, parse, parse_macro_input,
 };
 
 #[proc_macro_attribute]
 pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
     let args_expr_opt: Option<Expr> = (!args.is_empty()).then(|| parse(args).unwrap());
 
-    let ast = parse_macro_input!(input as ItemImpl);
+    let ast = parse_macro_input!(input as Item);
     let mut results = Vec::<TokenStream2>::new();
     for (has_either, has_neither, has_both) in [
         (true, false, false),
@@ -49,13 +52,7 @@ pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
         {
             continue;
         }
-        processor.visit_item_impl_mut(&mut ast);
-
-        if !has_either && !has_both {
-            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
-            ast.generics.params.clear();
-            ast.generics.where_clause = None;
-        }
+        processor.visit_item_mut(&mut ast);
 
         let generated_item = quote! { #ast };
         results.push(generated_item);
@@ -74,18 +71,43 @@ struct CodeProcessor {
 
 impl VisitMut for CodeProcessor {
     fn visit_path_mut(&mut self, node: &mut Path) {
-        // Recursively visit the path, do replacements in inner paths first.
         visit_path_mut(self, node);
 
         // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
-            if segment.ident == "Quither" {
-                self.replace_quither_path_segment(segment);
+            let ident = segment.ident.to_string();
+            if let Some(_) = ident.find("Quither") {
+                self.replace_quither_path_segment(segment, |new_part| {
+                    ident.replace("Quither", new_part)
+                });
             }
         }
 
         self.replace_has_quither_path(node);
+    }
+
+    fn visit_item_mut(&mut self, item: &mut Item) {
+        visit_item_mut(self, item);
+    }
+
+    fn visit_item_struct_mut(&mut self, item_struct: &mut ItemStruct) {
+        visit_item_struct_mut(self, item_struct);
+
+        if !self.has_either && !self.has_both {
+            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+            item_struct.generics.params.clear();
+            item_struct.generics.where_clause = None;
+        }
+
+        let ident_str = item_struct.ident.to_string();
+        if let Some(_) = ident_str.find("Quither") {
+            let new_ident_str = ident_str.replace(
+                "Quither",
+                Self::quither_name_gen((self.has_either, self.has_neither, self.has_both)),
+            );
+            item_struct.ident = Ident::new(&new_ident_str, item_struct.ident.span());
+        }
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
@@ -107,6 +129,12 @@ impl VisitMut for CodeProcessor {
                 None => true,
             }
         });
+
+        if !self.has_either && !self.has_both {
+            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+            item_impl.generics.params.clear();
+            item_impl.generics.where_clause = None;
+        }
     }
 
     fn visit_expr_match_mut(&mut self, ma: &mut syn::ExprMatch) {
@@ -120,7 +148,10 @@ impl VisitMut for CodeProcessor {
 }
 
 impl CodeProcessor {
-    fn replace_quither_path_segment(&mut self, segment: &mut PathSegment) {
+    fn replace_quither_path_segment<F>(&mut self, segment: &mut PathSegment, new_name_gen: F)
+    where
+        F: FnOnce(&str) -> String,
+    {
         let args = match &mut segment.arguments {
             PathArguments::AngleBracketed(syn_args) => {
                 syn_args.args.clone().into_pairs().collect::<Vec<_>>()
@@ -144,19 +175,8 @@ impl CodeProcessor {
         } else {
             return;
         };
-        let new_ident = match bool_args {
-            (true, true, true) => "Quither",
-            (true, true, false) => "EitherOrNeither",
-            (true, false, true) => "EitherOrBoth",
-            (true, false, false) => "Either",
-            (false, true, true) => "NeitherOrBoth",
-            (false, true, false) => "Neither",
-            (false, false, true) => "Both",
-            (false, false, false) => {
-                return;
-            }
-        };
-        segment.ident = Ident::new(new_ident, segment.ident.span());
+        let new_name_part = Self::quither_name_gen(bool_args);
+        segment.ident = Ident::new(&new_name_gen(new_name_part), segment.ident.span());
         if bool_args == (false, true, false) {
             // For `Neither` type, we need to remove the `<L, R>` arguments.
             segment.arguments = PathArguments::None
@@ -235,6 +255,19 @@ impl CodeProcessor {
                 }
             }
             _ => None,
+        }
+    }
+
+    fn quither_name_gen(bool_args: (bool, bool, bool)) -> &'static str {
+        match bool_args {
+            (true, true, true) => "Quither",
+            (true, true, false) => "EitherOrNeither",
+            (true, false, true) => "EitherOrBoth",
+            (true, false, false) => "Either",
+            (false, true, true) => "NeitherOrBoth",
+            (false, true, false) => "Neither",
+            (false, false, true) => "Both",
+            (false, false, false) => "Unreachable",
         }
     }
 }

@@ -36,7 +36,7 @@ mod factor;
 mod get_or_insert;
 mod getters;
 mod into;
-mod iter;
+pub mod iter;
 mod map;
 mod std_impls;
 

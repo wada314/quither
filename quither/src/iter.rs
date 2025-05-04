@@ -87,3 +87,6 @@ where
         }
     }
 }
+
+#[quither]
+pub struct IterQuither<L, R>(Quither<L, R>);
