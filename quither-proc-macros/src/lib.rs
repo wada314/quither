@@ -48,7 +48,7 @@ pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
         };
         if let Some(false) = args_expr_opt
             .as_ref()
-            .and_then(|args_expr| processor.check_quither_attr_condition(&args_expr))
+            .and_then(|args_expr| processor.check_quither_condition(&args_expr))
         {
             continue;
         }
@@ -160,13 +160,13 @@ impl CodeProcessor {
             _ => return,
         };
         let bool_args = if args.len() == 5 {
-            let Some(has_either) = generic_argument_as_a_bool(&args[2].value()) else {
+            let Some(has_either) = self.generic_argument_as_a_bool(&args[2].value()) else {
                 return;
             };
-            let Some(has_neither) = generic_argument_as_a_bool(&args[3].value()) else {
+            let Some(has_neither) = self.generic_argument_as_a_bool(&args[3].value()) else {
                 return;
             };
-            let Some(has_both) = generic_argument_as_a_bool(&args[4].value()) else {
+            let Some(has_both) = self.generic_argument_as_a_bool(&args[4].value()) else {
                 return;
             };
             (has_either, has_neither, has_both)
@@ -209,6 +209,18 @@ impl CodeProcessor {
         }
     }
 
+    fn generic_argument_as_a_bool(&self, arg: &GenericArgument) -> Option<bool> {
+        if let GenericArgument::Const(arg_expr) = arg {
+            self.check_quither_condition(&arg_expr)
+        } else if generic_argument_is_an_ident(arg, "true") {
+            Some(true)
+        } else if generic_argument_is_an_ident(arg, "false") {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
     fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
         let attr_path = attr.meta.path();
         if path_is_an_ident(&attr_path, "either") {
@@ -218,19 +230,19 @@ impl CodeProcessor {
         } else if path_is_an_ident(&attr_path, "both") {
             return Some(self.has_both);
         } else if path_is_an_ident(&attr_path, "quither") {
-            return self.check_quither_attr_condition(&attr.parse_args().ok()?);
+            return self.check_quither_condition(&attr.parse_args().ok()?);
         } else {
             return None;
         }
     }
 
-    fn check_quither_attr_condition(&self, args: &Expr) -> Option<bool> {
+    fn check_quither_condition(&self, args: &Expr) -> Option<bool> {
         match args {
             Expr::Binary(ExprBinary {
                 left, right, op, ..
             }) => {
-                let left = self.check_quither_attr_condition(left)?;
-                let right = self.check_quither_attr_condition(right)?;
+                let left = self.check_quither_condition(left)?;
+                let right = self.check_quither_condition(right)?;
                 match op {
                     BinOp::And(_) => Some(left && right),
                     BinOp::Or(_) => Some(left || right),
@@ -241,19 +253,23 @@ impl CodeProcessor {
                 expr,
                 op: UnOp::Not(_),
                 ..
-            }) => self.check_quither_attr_condition(expr).map(|b| !b),
-            Expr::Paren(ExprParen { expr, .. }) => self.check_quither_attr_condition(expr),
+            }) => self.check_quither_condition(expr).map(|b| !b),
+            Expr::Paren(ExprParen { expr, .. }) => self.check_quither_condition(expr),
             Expr::Path(ExprPath { path, .. }) => {
-                if path_is_an_ident(path, "has_either") {
+                if path.is_ident("has_either") {
                     Some(self.has_either)
-                } else if path_is_an_ident(path, "has_neither") {
+                } else if path.is_ident("has_neither") {
                     Some(self.has_neither)
-                } else if path_is_an_ident(path, "has_both") {
+                } else if path.is_ident("has_both") {
                     Some(self.has_both)
                 } else {
                     None
                 }
             }
+            Expr::Lit(ExprLit {
+                lit: Lit::Bool(LitBool { value, .. }),
+                ..
+            }) => Some(*value),
             _ => None,
         }
     }
@@ -318,15 +334,5 @@ fn generic_argument_is_an_ident(arg: &GenericArgument, expected_ident: &str) -> 
             }
         }
         _ => false,
-    }
-}
-
-fn generic_argument_as_a_bool(arg: &GenericArgument) -> Option<bool> {
-    if generic_argument_is_an_ident(arg, "true") {
-        Some(true)
-    } else if generic_argument_is_an_ident(arg, "false") {
-        Some(false)
-    } else {
-        None
     }
 }
