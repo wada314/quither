@@ -17,6 +17,9 @@
 //! Note some of the `std` traits like `AsRef`, `AsMut` are in other file ([`as_ref.rs`]).
 
 use super::*;
+use ::core::error::Error;
+use ::core::fmt::Display;
+use ::core::ops::{Deref, DerefMut};
 use ::quither_proc_macros::quither;
 #[cfg(feature = "use_std")]
 use ::std::io::{BufRead, Read, Result as IoResult};
@@ -95,6 +98,136 @@ where
             Self::Right(r) => r.consume(amt),
             #[neither]
             Self::Neither => {}
+        }
+    }
+}
+
+impl<L, R> Deref for Either<L, R>
+where
+    L: Deref,
+    R: Deref<Target = L::Target>,
+{
+    type Target = L::Target;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Left(l) => l,
+            Self::Right(r) => r,
+        }
+    }
+}
+
+impl<L, R> DerefMut for Either<L, R>
+where
+    L: DerefMut,
+    R: DerefMut<Target = L::Target>,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Left(l) => l,
+            Self::Right(r) => r,
+        }
+    }
+}
+
+#[quither]
+impl<L, R> Display for Quither<L, R>
+where
+    L: Display,
+    R: Display,
+{
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        match self {
+            #[either]
+            Self::Left(l) => write!(f, "Left({})", l),
+            #[either]
+            Self::Right(r) => write!(f, "Right({})", r),
+            #[neither]
+            Self::Neither => write!(f, "Neither"),
+            #[both]
+            Self::Both(l, r) => write!(f, "Both({}, {})", l, r),
+        }
+    }
+}
+
+impl<L, R> Error for Either<L, R>
+where
+    L: Error,
+    R: Error,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Left(l) => l.source(),
+            Self::Right(r) => r.source(),
+        }
+    }
+
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        match self {
+            Self::Left(l) => l.description(),
+            Self::Right(r) => r.description(),
+        }
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        match self {
+            Self::Left(l) => l.cause(),
+            Self::Right(r) => r.cause(),
+        }
+    }
+
+    // TODO: nightly methods?
+}
+
+/// Note `Extend` requires the item type `T` to be `Clone` if `Both` variant is present.
+#[quither(!has_neither && !has_both)]
+impl<L, R, T> Extend<T> for Quither<L, R>
+where
+    L: Extend<T>,
+    R: Extend<T>,
+{
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        match self {
+            #[either]
+            Self::Left(l) => l.extend(iter),
+            #[either]
+            Self::Right(r) => r.extend(iter),
+        }
+    }
+}
+
+/// Note `Extend` requires the item type `T` to be `Clone` if `Both` variant is present.
+#[quither(!has_neither && has_both)]
+impl<L, R, T> Extend<T> for Quither<L, R>
+where
+    L: Extend<T>,
+    R: Extend<T>,
+    T: Clone,
+{
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        match self {
+            #[either]
+            Self::Left(l) => l.extend(iter),
+            #[either]
+            Self::Right(r) => r.extend(iter),
+            #[both]
+            Self::Both(l, r) => {
+                let tuple_iter = iter.into_iter().map(|t| (t.clone(), t));
+
+                // Why `Extend` not implemented for `&mut T where T: Extend`?
+                struct Wrap<U>(U);
+                impl<U, V> Extend<V> for Wrap<&mut U>
+                where
+                    U: Extend<V>,
+                {
+                    fn extend<I: IntoIterator<Item = V>>(&mut self, iter: I) {
+                        self.0.extend(iter);
+                    }
+                }
+                (Wrap(l), Wrap(r)).extend(tuple_iter);
+            }
         }
     }
 }
