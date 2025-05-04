@@ -13,16 +13,18 @@
 // limitations under the License.
 
 use ::proc_macro::TokenStream;
-use ::proc_macro2::TokenStream as TokenStream2;
+use ::proc_macro2::{Span, TokenStream as TokenStream2};
 use ::quote::quote;
+use ::syn::spanned::Spanned;
 use ::syn::visit_mut::{
-    VisitMut, visit_expr_match_mut, visit_item_impl_mut, visit_item_mut, visit_item_struct_mut,
-    visit_path_mut,
+    VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
+    visit_item_struct_mut, visit_path_mut,
 };
 use ::syn::{
-    BinOp, Expr, ExprBinary, ExprLit, ExprParen, ExprPath, ExprUnary, GenericArgument, Ident,
-    ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path, PathArguments, PathSegment, Type,
-    TypePath, UnOp, parse, parse_macro_input,
+    BinOp, Block, Expr, ExprBinary, ExprBlock, ExprLit, ExprParen, ExprPath, ExprUnary,
+    GenericArgument, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path,
+    PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, parse, parse_macro_input, parse_quote,
+    parse_quote_spanned,
 };
 
 #[proc_macro_attribute]
@@ -71,8 +73,6 @@ struct CodeProcessor {
 
 impl VisitMut for CodeProcessor {
     fn visit_path_mut(&mut self, node: &mut Path) {
-        visit_path_mut(self, node);
-
         // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
@@ -83,8 +83,12 @@ impl VisitMut for CodeProcessor {
                 });
             }
         }
+        visit_path_mut(self, node);
+    }
 
-        self.replace_has_quither_path(node);
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        self.replace_has_quither_expr(expr);
+        visit_expr_mut(self, expr);
     }
 
     fn visit_item_mut(&mut self, item: &mut Item) {
@@ -192,30 +196,38 @@ impl CodeProcessor {
         }
     }
 
-    fn replace_has_quither_path(&mut self, path: &mut Path) {
+    fn replace_has_quither_expr(&mut self, expr: &mut Expr) {
+        let Expr::Path(ExprPath { path, .. }) = expr else {
+            return;
+        };
         let Some(ident) = path.get_ident() else {
             return;
         };
-        if ident == "has_either" {
-            *path = Ident::new(if self.has_either { "true" } else { "false" }, ident.span()).into();
+        let found_value = if ident == "has_either" {
+            Some(self.has_either)
         } else if ident == "has_neither" {
-            *path = Ident::new(
-                if self.has_neither { "true" } else { "false" },
-                ident.span(),
-            )
-            .into();
+            Some(self.has_neither)
         } else if ident == "has_both" {
-            *path = Ident::new(if self.has_both { "true" } else { "false" }, ident.span()).into();
+            Some(self.has_both)
+        } else {
+            None
+        };
+        if let Some(found_value) = found_value {
+            *expr = Expr::Lit(ExprLit {
+                lit: Lit::Bool(LitBool {
+                    value: found_value,
+                    span: expr.span(),
+                }),
+                attrs: Vec::new(),
+            });
         }
     }
 
     fn generic_argument_as_a_bool(&self, arg: &GenericArgument) -> Option<bool> {
         if let GenericArgument::Const(arg_expr) = arg {
             self.check_quither_condition(&arg_expr)
-        } else if generic_argument_is_an_ident(arg, "true") {
-            Some(true)
-        } else if generic_argument_is_an_ident(arg, "false") {
-            Some(false)
+        } else if let GenericArgument::Type(Type::Path(TypePath { path, .. })) = arg {
+            self.check_quither_condition_for_path(&path)
         } else {
             None
         }
@@ -223,13 +235,13 @@ impl CodeProcessor {
 
     fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
         let attr_path = attr.meta.path();
-        if path_is_an_ident(&attr_path, "either") {
+        if attr_path.is_ident("either") {
             return Some(self.has_either);
-        } else if path_is_an_ident(&attr_path, "neither") {
+        } else if attr_path.is_ident("neither") {
             return Some(self.has_neither);
-        } else if path_is_an_ident(&attr_path, "both") {
+        } else if attr_path.is_ident("both") {
             return Some(self.has_both);
-        } else if path_is_an_ident(&attr_path, "quither") {
+        } else if attr_path.is_ident("quither") {
             return self.check_quither_condition(&attr.parse_args().ok()?);
         } else {
             return None;
@@ -255,22 +267,36 @@ impl CodeProcessor {
                 ..
             }) => self.check_quither_condition(expr).map(|b| !b),
             Expr::Paren(ExprParen { expr, .. }) => self.check_quither_condition(expr),
-            Expr::Path(ExprPath { path, .. }) => {
-                if path.is_ident("has_either") {
-                    Some(self.has_either)
-                } else if path.is_ident("has_neither") {
-                    Some(self.has_neither)
-                } else if path.is_ident("has_both") {
-                    Some(self.has_both)
-                } else {
-                    None
+            Expr::Block(ExprBlock {
+                block: Block { stmts, .. },
+                ..
+            }) => {
+                if stmts.len() != 1 {
+                    return None;
                 }
+                let Some(Stmt::Expr(expr, _)) = stmts.first() else {
+                    return None;
+                };
+                self.check_quither_condition(expr)
             }
+            Expr::Path(ExprPath { path, .. }) => self.check_quither_condition_for_path(path),
             Expr::Lit(ExprLit {
                 lit: Lit::Bool(LitBool { value, .. }),
                 ..
             }) => Some(*value),
             _ => None,
+        }
+    }
+
+    fn check_quither_condition_for_path(&self, path: &Path) -> Option<bool> {
+        if path.is_ident("has_either") {
+            Some(self.has_either)
+        } else if path.is_ident("has_neither") {
+            Some(self.has_neither)
+        } else if path.is_ident("has_both") {
+            Some(self.has_both)
+        } else {
+            None
         }
     }
 
@@ -301,38 +327,52 @@ where
     None
 }
 
-fn path_is_an_ident(path: &Path, ident: &str) -> bool {
-    if path.segments.len() != 1 {
-        return false;
-    }
-    if path.leading_colon.is_some() {
-        return false;
-    }
-    let Some(first_segment) = path.segments.first() else {
-        return false;
+#[test]
+fn test_quither_condition_value() {
+    let cp = CodeProcessor {
+        has_either: true,
+        has_neither: false,
+        has_both: true,
     };
-    first_segment.ident == ident && first_segment.arguments.is_empty()
+    assert_eq!(
+        Some(true),
+        cp.check_quither_condition(&parse_quote! { true })
+    );
+    assert_eq!(
+        Some(true),
+        cp.check_quither_condition(&parse_quote! { has_either })
+    );
+    assert_eq!(
+        Some(true),
+        cp.check_quither_condition(&parse_quote! { { true } })
+    );
+    assert_eq!(
+        Some(false),
+        cp.check_quither_condition(&parse_quote! { { has_either && has_neither } })
+    );
 }
 
-fn generic_argument_is_an_ident(arg: &GenericArgument, expected_ident: &str) -> bool {
-    match arg {
-        GenericArgument::Type(Type::Path(TypePath {
-            path, qself: None, ..
-        })) => {
-            let Some(ident) = path.get_ident() else {
-                return false;
-            };
-            ident == expected_ident
-        }
-        GenericArgument::Const(Expr::Lit(ExprLit { lit, .. })) => {
-            let Lit::Bool(LitBool { value, .. }) = lit else {
-                return false;
-            };
-            match value {
-                true => expected_ident == "true",
-                false => expected_ident == "false",
-            }
-        }
-        _ => false,
-    }
+#[test]
+fn test_visit_path_mut() {
+    let mut cp = CodeProcessor {
+        has_either: true,
+        has_neither: false,
+        has_both: true,
+    };
+    let span = Span::call_site();
+
+    let mut path = parse_quote_spanned! { span => Quither<L, R> };
+    cp.visit_path_mut(&mut path);
+    assert_eq!(path, parse_quote_spanned! { span => EitherOrBoth<L, R> });
+
+    let mut path = parse_quote_spanned! { span => Quither<L, R, false, false, true> };
+    cp.visit_path_mut(&mut path);
+    assert_eq!(path, parse_quote_spanned! { span => Both<L, R, > });
+
+    let mut path = parse_quote_spanned! { span => Quither<L, R, has_both, has_both, has_neither> };
+    cp.visit_path_mut(&mut path);
+    assert_eq!(
+        path,
+        parse_quote_spanned! { span => EitherOrNeither<L, R, > }
+    );
 }

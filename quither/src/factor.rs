@@ -43,39 +43,50 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     /// it is needed to handle the case where one of the values is `None`.
     ///
     /// TODO: Needs examples.
-    #[quither(has_both)]
-    pub fn factor_none(self) -> Option<Quither<L, R, true, has_neither, true>> {
+    pub fn factor_none(
+        self,
+    ) -> Option<Quither<L, R, { has_both || has_either }, has_neither, has_both>> {
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Quither::<L, R, true, has_neither, true>::Left(l)),
+            Self::Left(Some(l)) => Some(Quither::<
+                L,
+                R,
+                { has_both || has_either },
+                has_neither,
+                has_both,
+            >::Left(l)),
             #[either]
-            Self::Right(Some(r)) => Some(Quither::<L, R, true, has_neither, true>::Right(r)),
+            Self::Right(Some(r)) => Some(Quither::<
+                L,
+                R,
+                { has_both || has_either },
+                has_neither,
+                has_both,
+            >::Right(r)),
             #[both]
-            Self::Both(Some(l), Some(r)) => {
-                Some(Quither::<L, R, true, has_neither, true>::Both(l, r))
-            }
+            Self::Both(Some(l), Some(r)) => Some(Quither::<
+                L,
+                R,
+                { has_both || has_either },
+                has_neither,
+                has_both,
+            >::Both(l, r)),
             #[both]
-            Self::Both(Some(l), None) => Some(Quither::<L, R, true, has_neither, true>::Left(l)),
+            Self::Both(Some(l), None) => Some(Quither::<
+                L,
+                R,
+                { has_both || has_either },
+                has_neither,
+                has_both,
+            >::Left(l)),
             #[both]
-            Self::Both(None, Some(r)) => Some(Quither::<L, R, true, has_neither, true>::Right(r)),
-            _ => None,
-        }
-    }
-
-    /// Factor out the `None` values out from the type.
-    ///
-    /// Note that for some types, this method returns a different type from the input type.
-    /// For example, `Both` type's this method returns `EitherOrBoth` type because
-    /// it is needed to handle the case where one of the values is `None`.
-    ///
-    /// TODO: Needs examples.
-    #[quither(!has_both)]
-    pub fn factor_none(self) -> Option<Quither<L, R, has_either, has_neither, false>> {
-        match self {
-            #[either]
-            Self::Left(Some(l)) => Some(Quither::<L, R, has_either, has_neither, false>::Left(l)),
-            #[either]
-            Self::Right(Some(r)) => Some(Quither::<L, R, has_either, has_neither, false>::Right(r)),
+            Self::Both(None, Some(r)) => Some(Quither::<
+                L,
+                R,
+                { has_both || has_either },
+                has_neither,
+                has_both,
+            >::Right(r)),
             _ => None,
         }
     }
