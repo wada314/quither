@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::core::iter::FusedIterator;
+
 use super::*;
 use ::quither_proc_macros::quither;
 
@@ -33,6 +35,25 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    #[quither(has_either && has_both)]
+    pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
+    where
+        L: IntoIterator,
+        R: IntoIterator<Item = L::Item>,
+        L::IntoIter: FusedIterator,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Quither::Left(l.into_iter()),
+            #[either]
+            Self::Right(r) => Quither::Right(r.into_iter()),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
+        }
+    }
+
     #[quither(has_either && !has_both)]
     pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
@@ -46,6 +67,25 @@ impl<L, R> Quither<L, R> {
             Self::Right(r) => Quither::Right(r.into_iter()),
             #[neither]
             Self::Neither => Quither::Neither,
+        }
+    }
+
+    #[quither(has_either && has_both)]
+    pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+        for<'a> <&'a L as IntoIterator>::IntoIter: FusedIterator,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Quither::Left(l.into_iter()),
+            #[either]
+            Self::Right(r) => Quither::Right(r.into_iter()),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
         }
     }
 
@@ -64,6 +104,27 @@ impl<L, R> Quither<L, R> {
             Self::Right(r) => Quither::Right(r.into_iter()),
             #[neither]
             Self::Neither => Quither::Neither,
+        }
+    }
+
+    #[quither(has_either && has_both)]
+    pub fn iter_mut(
+        &mut self,
+    ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+        for<'a> <&'a mut L as IntoIterator>::IntoIter: FusedIterator,
+    {
+        match self {
+            #[either]
+            Self::Left(l) => Quither::Left(l.into_iter()),
+            #[either]
+            Self::Right(r) => Quither::Right(r.into_iter()),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
         }
     }
 
@@ -121,6 +182,28 @@ where
             Self::Right(r) => r.next(),
             #[neither]
             Self::Neither => None,
+        }
+    }
+}
+
+#[quither(has_either && has_both)]
+impl<L, R> Iterator for Quither<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator<Item = L::Item>,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            #[either]
+            Self::Left(l) => l.next(),
+            #[either]
+            Self::Right(r) => r.next(),
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(l, r) => l.next().or_else(|| r.next()),
         }
     }
 }
