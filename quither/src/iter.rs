@@ -66,6 +66,43 @@ impl<L, R> Quither<L, R> {
             Self::Neither => Quither::Neither,
         }
     }
+
+    #[quither(has_either || has_both)]
+    pub fn factor_into_iter(self) -> IterQuither<L::IntoIter, R::IntoIter>
+    where
+        L: IntoIterator,
+        R: IntoIterator<Item = L::Item>,
+    {
+        IterQuither(self.map2(L::into_iter, R::into_iter))
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn factor_iter(
+        &self,
+    ) -> IterQuither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+    {
+        IterQuither(self.as_ref().map2(
+            <&L as IntoIterator>::into_iter,
+            <&R as IntoIterator>::into_iter,
+        ))
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn factor_iter_mut(
+        &mut self,
+    ) -> IterQuither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        IterQuither(self.as_mut().map2(
+            <&mut L as IntoIterator>::into_iter,
+            <&mut R as IntoIterator>::into_iter,
+        ))
+    }
 }
 
 #[quither(has_either && !has_both)]
@@ -88,10 +125,11 @@ where
     }
 }
 
-#[quither]
+#[quither(has_either || has_both)]
+#[derive(Debug, Clone)]
 pub struct IterQuither<L, R>(Quither<L, R>);
 
-#[quither]
+#[quither(has_either || has_both)]
 impl<L, R> Iterator for IterQuither<L, R>
 where
     L: Iterator,
