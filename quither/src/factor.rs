@@ -38,30 +38,29 @@ impl<L, R> Quither<L, R> {
 impl<L, R> Quither<Option<L>, Option<R>> {
     /// Factor out the `None` values out from the type.
     ///
-    /// This method is only available in the type which is NOT containing `Neither` variant.
-    /// (This is because I'm not sure whether I should return `None` or `Some(Neither)`).
-    ///
     /// Note that for some types, this method returns a different type from the input type.
     /// For example, `Both` type's this method returns `EitherOrBoth` type because
     /// it is needed to handle the case where one of the values is `None`.
     ///
     /// TODO: Needs examples.
-    #[quither(!has_neither && (has_either || has_both))]
-    pub fn factor_none(self) -> Option<Quither<L, R, true, false, has_both>> {
+    pub fn factor_none(self) -> Option<Quither<L, R, has_both || has_either, has_neither, has_both>> {
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
+            Self::Left(Some(l)) => Some(Quither::<L, R, true, has_neither, has_both>::Left(l)),
             #[either]
-            Self::Right(Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
+            Self::Right(Some(r)) => Some(Quither::<L, R, true, has_neither, has_both>::Right(r)),
             #[both]
             Self::Both(Some(l), Some(r)) => {
-                Some(Quither::<L, R, true, false, has_both>::Both(l, r))
+                Some(Quither::<L, R, true, has_neither, has_both>::Both(l, r))
             }
             #[both]
-            Self::Both(Some(l), None) => Some(Quither::<L, R, true, false, has_both>::Left(l)),
+            Self::Both(Some(l), None) => {
+                Some(Quither::<L, R, true, has_neither, has_both>::Left(l))
+            }
             #[both]
-            Self::Both(None, Some(r)) => Some(Quither::<L, R, true, false, has_both>::Right(r)),
-            #[quither(has_either || has_both)]
+            Self::Both(None, Some(r)) => {
+                Some(Quither::<L, R, true, has_neither, has_both>::Right(r))
+            }
             _ => None,
         }
     }
