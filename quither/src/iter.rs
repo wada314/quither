@@ -184,9 +184,20 @@ where
             Self::Neither => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            #[either]
+            Self::Left(l) => l.size_hint(),
+            #[either]
+            Self::Right(r) => r.size_hint(),
+            #[neither]
+            Self::Neither => (0, Some(0)),
+        }
+    }
 }
 
-#[quither(has_either && has_both)]
+#[quither(has_both)]
 impl<L, R> Iterator for Quither<L, R>
 where
     L: Iterator + FusedIterator,
@@ -204,6 +215,54 @@ where
             Self::Neither => None,
             #[both]
             Self::Both(l, r) => l.next().or_else(|| r.next()),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            #[either]
+            Self::Left(l) => l.size_hint(),
+            #[either]
+            Self::Right(r) => r.size_hint(),
+            #[neither]
+            Self::Neither => (0, Some(0)),
+            #[both]
+            Self::Both(l, r) => {
+                let (l_lower, l_upper) = l.size_hint();
+                let (r_lower, r_upper) = r.size_hint();
+                (
+                    usize::saturating_add(l_lower, r_lower),
+                    l_upper.and_then(|l_upper| {
+                        r_upper.and_then(|r_upper| usize::checked_add(l_upper, r_upper))
+                    }),
+                )
+            }
+        }
+    }
+}
+
+#[quither(has_either || has_both)]
+impl<L, R> FusedIterator for Quither<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator<Item = L::Item> + FusedIterator,
+{
+}
+
+#[quither(has_either && !has_both)]
+impl<L, R> ExactSizeIterator for Quither<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator<Item = L::Item> + ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        match self {
+            #[either]
+            Self::Left(l) => l.len(),
+            #[either]
+            Self::Right(r) => r.len(),
+            #[neither]
+            Self::Neither => 0,
         }
     }
 }
@@ -237,4 +296,44 @@ where
             },
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match &self.0 {
+            #[either]
+            Quither::Left(l) => l.size_hint(),
+            #[either]
+            Quither::Right(r) => r.size_hint(),
+            #[neither]
+            Quither::Neither => (0, Some(0)),
+            #[both]
+            Quither::Both(l, r) => {
+                let (l_lower, l_upper) = l.size_hint();
+                let (r_lower, r_upper) = r.size_hint();
+                (
+                    usize::min(l_lower, r_lower),
+                    if let (Some(l_upper), Some(r_upper)) = (l_upper, r_upper) {
+                        Some(usize::max(l_upper, r_upper))
+                    } else {
+                        None
+                    },
+                )
+            }
+        }
+    }
+}
+
+#[quither(has_either || has_both)]
+impl<L, R> FusedIterator for IterQuither<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator + FusedIterator,
+{
+}
+
+#[quither(has_either || has_both)]
+impl<L, R> ExactSizeIterator for IterQuither<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator + ExactSizeIterator,
+{
 }
