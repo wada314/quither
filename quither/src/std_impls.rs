@@ -283,3 +283,29 @@ impl<L, R> From<Quither<L, R, has_either, false, has_both>> for Quither<L, R> {
         }
     }
 }
+
+/// Promotes a type and adds `Both` and `Neither` variants.
+impl<L, R> From<Either<L, R>> for Quither<L, R> {
+    fn from(either: Either<L, R>) -> Self {
+        match either {
+            Either::Left(l) => Quither::Left(l),
+            Either::Right(r) => Quither::Right(r),
+        }
+    }
+}
+
+/// Promotes a type and adds `Either` and `Both` variants.
+impl<L, R> From<Neither> for Quither<L, R> {
+    fn from(_neither: Neither) -> Self {
+        Quither::Neither
+    }
+}
+
+/// Promotes a type and adds `Either` and `Neither` variants.
+impl<L, R> From<Both<L, R>> for Quither<L, R> {
+    fn from(both: Both<L, R>) -> Self {
+        match both {
+            Both::Both(l, r) => Quither::Both(l, r),
+        }
+    }
+}
