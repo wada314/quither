@@ -16,6 +16,7 @@ use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::spanned::Spanned;
+use ::syn::visit::{Visit, visit_path, visit_type};
 use ::syn::visit_mut::{
     VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
     visit_item_struct_mut, visit_item_type_mut, visit_path_mut,
@@ -124,8 +125,9 @@ impl VisitMut for CodeProcessor {
             }
         });
 
-        if !self.has_either && !self.has_both {
-            // For `Neither` type, we need to remove the `<L, R>` arguments after `impl`.
+        if !self.check_lr_params_exist_in_impl(item_impl) {
+            // If the `<L, R>` arguments are not found in the impl, we need to remove them.
+            // This can happen when only the `Neither` type is used.
             item_impl.generics.params.clear();
             item_impl.generics.where_clause = None;
         }
@@ -146,27 +148,7 @@ impl CodeProcessor {
     where
         F: FnOnce(&str) -> String,
     {
-        let args = match &mut segment.arguments {
-            PathArguments::AngleBracketed(syn_args) => {
-                syn_args.args.clone().into_pairs().collect::<Vec<_>>()
-            }
-            PathArguments::None => Vec::new(),
-            _ => return,
-        };
-        let bool_args = if args.len() == 5 {
-            let Some(has_either) = self.generic_argument_as_a_bool(&args[2].value()) else {
-                return;
-            };
-            let Some(has_neither) = self.generic_argument_as_a_bool(&args[3].value()) else {
-                return;
-            };
-            let Some(has_both) = self.generic_argument_as_a_bool(&args[4].value()) else {
-                return;
-            };
-            (has_either, has_neither, has_both)
-        } else if args.len() == 2 || args.len() == 0 {
-            (self.has_either, self.has_neither, self.has_both)
-        } else {
+        let Some(bool_args) = self.implicit_345th_bool_arguments_for_path_segment(segment) else {
             return;
         };
         let new_name_part = Self::quither_name_gen(bool_args);
@@ -227,6 +209,24 @@ impl CodeProcessor {
                 }),
                 attrs: Vec::new(),
             });
+        }
+    }
+
+    fn implicit_345th_bool_arguments_for_path_segment(
+        &self,
+        segment: &syn::PathSegment,
+    ) -> Option<(bool, bool, bool)> {
+        let PathArguments::AngleBracketed(syn_args) = &segment.arguments else {
+            return None;
+        };
+        let args = syn_args.args.clone().into_pairs().collect::<Vec<_>>();
+        if args.len() == 5 {
+            let has_either = self.generic_argument_as_a_bool(&args[2].value())?;
+            let has_neither = self.generic_argument_as_a_bool(&args[3].value())?;
+            let has_both = self.generic_argument_as_a_bool(&args[4].value())?;
+            dbg!(Some((has_either, has_neither, has_both)))
+        } else {
+            dbg!(Some((self.has_either, self.has_neither, self.has_both)))
         }
     }
 
@@ -307,6 +307,18 @@ impl CodeProcessor {
         }
     }
 
+    fn check_lr_params_exist_in_impl(&self, impl_item: &syn::ItemImpl) -> bool {
+        let mut lr_argument_finder = LrArgumentFinder {
+            found: false,
+            processor: self,
+        };
+        visit_type(&mut lr_argument_finder, &impl_item.self_ty);
+        if let Some((_, trait_path, _)) = &impl_item.trait_ {
+            visit_path(&mut lr_argument_finder, trait_path);
+        }
+        lr_argument_finder.found
+    }
+
     fn quither_name_gen(bool_args: (bool, bool, bool)) -> &'static str {
         match bool_args {
             (true, true, true) => "Quither",
@@ -317,6 +329,30 @@ impl CodeProcessor {
             (false, true, false) => "Neither",
             (false, false, true) => "Both",
             (false, false, false) => "Unreachable",
+        }
+    }
+}
+
+struct LrArgumentFinder<'a> {
+    found: bool,
+    processor: &'a CodeProcessor,
+}
+
+impl<'a, 'ast> Visit<'ast> for LrArgumentFinder<'a> {
+    fn visit_path_segment(&mut self, segment: &'ast syn::PathSegment) {
+        if !segment.ident.to_string().contains("Quither") {
+            return;
+        }
+        let Some(bool_args) = self
+            .processor
+            .implicit_345th_bool_arguments_for_path_segment(segment)
+        else {
+            return;
+        };
+        if bool_args != (false, true, false) {
+            // Unless the bool arguments are expressing `Neither` type, we can find the `L` and `R`
+            // arguments.
+            self.found = true;
         }
     }
 }
@@ -387,4 +423,28 @@ fn test_visit_path_mut() {
         path,
         parse_quote_spanned! { span => EitherOrNeither<L, R, > }
     );
+}
+
+#[test]
+fn test_check_lr_params_exist_in_impl() {
+    use ::proc_macro2::Span;
+    use ::syn::parse_quote_spanned;
+
+    let span = Span::call_site();
+
+    let impl_item = parse_quote_spanned! { span =>
+        impl<L, R> Quither<L, R> {}
+    };
+    let cp_neither = CodeProcessor {
+        has_either: false,
+        has_neither: true,
+        has_both: false,
+    };
+    let cp_quither = CodeProcessor {
+        has_either: true,
+        has_neither: true,
+        has_both: true,
+    };
+    assert!(!cp_neither.check_lr_params_exist_in_impl(&impl_item));
+    assert!(cp_quither.check_lr_params_exist_in_impl(&impl_item));
 }
