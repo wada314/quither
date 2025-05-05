@@ -16,7 +16,7 @@ use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::spanned::Spanned;
-use ::syn::visit::{Visit, visit_path, visit_type};
+use ::syn::visit::{Visit, visit_path, visit_path_segment, visit_type};
 use ::syn::visit_mut::{
     VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
     visit_item_struct_mut, visit_item_type_mut, visit_path_mut,
@@ -106,6 +106,8 @@ impl VisitMut for CodeProcessor {
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
+        let lr_params_exist = self.check_lr_params_exist_in_impl(item_impl);
+
         visit_item_impl_mut(self, item_impl);
 
         item_impl.items.retain_mut(|item| {
@@ -125,7 +127,7 @@ impl VisitMut for CodeProcessor {
             }
         });
 
-        if !self.check_lr_params_exist_in_impl(item_impl) {
+        if !lr_params_exist {
             // If the `<L, R>` arguments are not found in the impl, we need to remove them.
             // This can happen when only the `Neither` type is used.
             item_impl.generics.params.clear();
@@ -216,18 +218,16 @@ impl CodeProcessor {
         &self,
         segment: &syn::PathSegment,
     ) -> Option<(bool, bool, bool)> {
-        let PathArguments::AngleBracketed(syn_args) = &segment.arguments else {
-            return None;
-        };
-        let args = syn_args.args.clone().into_pairs().collect::<Vec<_>>();
-        if args.len() == 5 {
-            let has_either = self.generic_argument_as_a_bool(&args[2].value())?;
-            let has_neither = self.generic_argument_as_a_bool(&args[3].value())?;
-            let has_both = self.generic_argument_as_a_bool(&args[4].value())?;
-            dbg!(Some((has_either, has_neither, has_both)))
-        } else {
-            dbg!(Some((self.has_either, self.has_neither, self.has_both)))
+        if let PathArguments::AngleBracketed(syn_args) = &segment.arguments {
+            let args = syn_args.args.clone().into_pairs().collect::<Vec<_>>();
+            if args.len() == 5 {
+                let has_either = self.generic_argument_as_a_bool(&args[2].value())?;
+                let has_neither = self.generic_argument_as_a_bool(&args[3].value())?;
+                let has_both = self.generic_argument_as_a_bool(&args[4].value())?;
+                return Some((has_either, has_neither, has_both));
+            }
         }
+        Some((self.has_either, self.has_neither, self.has_both))
     }
 
     fn generic_argument_as_a_bool(&self, arg: &GenericArgument) -> Option<bool> {
@@ -339,7 +339,9 @@ struct LrArgumentFinder<'a> {
 }
 
 impl<'a, 'ast> Visit<'ast> for LrArgumentFinder<'a> {
-    fn visit_path_segment(&mut self, segment: &'ast syn::PathSegment) {
+    fn visit_path_segment(&mut self, segment: &'ast PathSegment) {
+        visit_path_segment(self, segment);
+
         if !segment.ident.to_string().contains("Quither") {
             return;
         }
@@ -431,10 +433,6 @@ fn test_check_lr_params_exist_in_impl() {
     use ::syn::parse_quote_spanned;
 
     let span = Span::call_site();
-
-    let impl_item = parse_quote_spanned! { span =>
-        impl<L, R> Quither<L, R> {}
-    };
     let cp_neither = CodeProcessor {
         has_either: false,
         has_neither: true,
@@ -444,6 +442,16 @@ fn test_check_lr_params_exist_in_impl() {
         has_either: true,
         has_neither: true,
         has_both: true,
+    };
+
+    let impl_item = parse_quote_spanned! { span =>
+        impl<L, R> Quither<L, R> {}
+    };
+    assert!(!cp_neither.check_lr_params_exist_in_impl(&impl_item));
+    assert!(cp_quither.check_lr_params_exist_in_impl(&impl_item));
+
+    let impl_item = parse_quote_spanned! { span =>
+        impl<L, R> From<Quither<L, R>> for EitherOrBoth<L, R> {}
     };
     assert!(!cp_neither.check_lr_params_exist_in_impl(&impl_item));
     assert!(cp_quither.check_lr_params_exist_in_impl(&impl_item));
