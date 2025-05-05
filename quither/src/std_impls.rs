@@ -22,7 +22,7 @@ use ::core::fmt::Display;
 use ::core::ops::{Deref, DerefMut};
 use ::quither_proc_macros::quither;
 #[cfg(feature = "use_std")]
-use ::std::io::{BufRead, Read, Result as IoResult};
+use ::std::io::{BufRead, Read, Result as IoResult, Seek, SeekFrom};
 
 /// Implement `Read` for `Quither<L, R>` if `L` and `R` implement `Read`.
 ///
@@ -98,6 +98,25 @@ where
             Self::Right(r) => r.consume(amt),
             #[neither]
             Self::Neither => {}
+        }
+    }
+}
+
+#[cfg(feature = "use_std")]
+#[quither(!has_both)]
+impl<L, R> Seek for Quither<L, R>
+where
+    L: Seek,
+    R: Seek,
+{
+    fn seek(&mut self, #[allow(unused)] pos: SeekFrom) -> IoResult<u64> {
+        match self {
+            #[either]
+            Self::Left(l) => l.seek(pos),
+            #[either]
+            Self::Right(r) => r.seek(pos),
+            #[neither]
+            Self::Neither => Ok(0),
         }
     }
 }
