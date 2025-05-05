@@ -23,8 +23,9 @@ use ::syn::visit_mut::{
 };
 use ::syn::{
     BinOp, Block, Expr, ExprBinary, ExprBlock, ExprLit, ExprParen, ExprPath, ExprUnary,
-    GenericArgument, Generics, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit, LitBool, Path,
-    PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, parse, parse_macro_input,
+    GenericArgument, GenericParam, Generics, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit,
+    LitBool, Path, PathArguments, PathSegment, PredicateType, Stmt, Type, TypeParam, TypePath,
+    UnOp, WherePredicate, parse, parse_macro_input,
 };
 
 #[proc_macro_attribute]
@@ -76,12 +77,9 @@ impl VisitMut for CodeProcessor {
         // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
-            let ident = segment.ident.to_string();
-            if let Some(_) = ident.find("Quither") {
-                self.replace_quither_path_segment(segment, |new_part| {
-                    ident.replace("Quither", new_part)
-                });
-            }
+            self.replace_quither_path_segment(segment, |ident, new_part| {
+                ident.to_string().replace("Quither", new_part)
+            });
         }
         visit_path_mut(self, node);
     }
@@ -127,11 +125,47 @@ impl VisitMut for CodeProcessor {
             }
         });
 
-        if !lr_params_exist {
-            // If the `<L, R>` arguments are not found in the impl, we need to remove them.
-            // This can happen when only the `Neither` type is used.
-            item_impl.generics.params.clear();
-            item_impl.generics.where_clause = None;
+        // If the `<L, R>` arguments are not found in the impl, we need to remove them.
+        // This can happen when only the `Neither` type is used.
+        if !lr_params_exist && item_impl.generics.params.len() == 2 {
+            // Super ad-hoc implementation, remove the param named `L` and `R`.
+            item_impl.generics.params = item_impl
+                .generics
+                .params
+                .clone()
+                .into_iter()
+                .filter(|param| {
+                    if let GenericParam::Type(TypeParam { ident, .. }) = param {
+                        ident.to_string() != "L" && ident.to_string() != "R"
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+            // Super ad-hoc implementation 2
+            // remove where clause if the type before colon is `L` or `R`.
+            // Note this implementation is not handling the case that `L` or `R` appears in
+            // other places.
+            item_impl.generics.where_clause =
+                item_impl.generics.where_clause.clone().map(|mut wh| {
+                    wh.predicates = wh
+                        .predicates
+                        .into_iter()
+                        .filter(|pred| {
+                            if let WherePredicate::Type(PredicateType {
+                                bounded_ty: Type::Path(TypePath { path, .. }),
+                                ..
+                            }) = &pred
+                            {
+                                if let Some(ident) = path.get_ident() {
+                                    return ident.to_string() != "L" && ident.to_string() != "R";
+                                }
+                            }
+                            return true;
+                        })
+                        .collect();
+                    wh
+                })
         }
     }
 
@@ -148,13 +182,20 @@ impl VisitMut for CodeProcessor {
 impl CodeProcessor {
     fn replace_quither_path_segment<F>(&self, segment: &mut PathSegment, new_name_gen: F)
     where
-        F: FnOnce(&str) -> String,
+        F: FnOnce(&str, &str) -> String,
     {
+        let ident_string = segment.ident.to_string();
+        if !ident_string.contains("Quither") {
+            return;
+        }
         let Some(bool_args) = self.implicit_345th_bool_arguments_for_path_segment(segment) else {
             return;
         };
         let new_name_part = Self::quither_name_gen(bool_args);
-        segment.ident = Ident::new(&new_name_gen(new_name_part), segment.ident.span());
+        segment.ident = Ident::new(
+            &new_name_gen(&ident_string, new_name_part),
+            segment.ident.span(),
+        );
         if bool_args == (false, true, false) {
             // For `Neither` type, we need to remove the `<L, R>` arguments.
             segment.arguments = PathArguments::None
