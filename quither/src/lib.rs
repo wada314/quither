@@ -32,6 +32,7 @@
 
 mod and_or_getters;
 mod as_ref;
+mod conv;
 mod factor;
 mod get_or_insert;
 mod getters;
