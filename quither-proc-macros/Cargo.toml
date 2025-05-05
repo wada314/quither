@@ -6,7 +6,11 @@ edition = "2024"
 [dependencies]
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
-syn = { version = "2.0.101", features = ["full", "visit-mut", "extra-traits"] }
+syn = { version = "2.0.101", features = ["full", "visit-mut"] }
 
+[dev-dependencies]
+syn = { version = "2.0.101", features = [
+    "extra-traits", # For testing
+] }
 [lib]
 proc-macro = true
