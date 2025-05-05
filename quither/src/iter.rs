@@ -267,6 +267,44 @@ where
     }
 }
 
+#[quither(has_either && !has_both)]
+impl<L, R> DoubleEndedIterator for Quither<L, R>
+where
+    L: Iterator + DoubleEndedIterator,
+    R: Iterator<Item = L::Item> + DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            #[either]
+            Self::Left(l) => l.next_back(),
+            #[either]
+            Self::Right(r) => r.next_back(),
+            #[neither]
+            Self::Neither => None,
+        }
+    }
+}
+
+#[quither(has_both)]
+impl<L, R> DoubleEndedIterator for Quither<L, R>
+where
+    L: Iterator + FusedIterator + DoubleEndedIterator,
+    R: Iterator<Item = L::Item> + FusedIterator + DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            #[either]
+            Self::Left(l) => l.next_back(),
+            #[either]
+            Self::Right(r) => r.next_back(),
+            #[neither]
+            Self::Neither => None,
+            #[both]
+            Self::Both(l, r) => r.next_back().or_else(|| l.next_back()),
+        }
+    }
+}
+
 #[quither(has_either || has_both)]
 #[derive(Debug, Clone)]
 pub struct IterQuither<L, R>(Quither<L, R>);
