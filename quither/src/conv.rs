@@ -84,7 +84,7 @@ impl<L, R> From<Neither> for Quither<L, R> {
     }
 }
 
-/// Promotes a type and adds `Either` and `Neither` variants.
+/// Promotes a type and adds `Either` and `Both` variants.
 impl<L, R> From<Both<L, R>> for Quither<L, R> {
     fn from(both: Both<L, R>) -> Self {
         match both {
@@ -156,6 +156,37 @@ impl<L, R> TryFrom<Quither<L, R, true, true, has_both>> for Quither<L, R> {
             Quither::<L, R, true, true, has_both>::Neither => Err(EitherOrNeither::Neither),
             #[both]
             Quither::<L, R, true, true, has_both>::Both(l, r) => Ok(Quither::Both(l, r)),
+        }
+    }
+}
+
+/// Demotes a type with `Either` and `Both` variants to a type without those variants.
+#[quither(!has_either && !has_both)]
+impl<L, R> TryFrom<Quither<L, R, true, has_neither, true>> for Quither<L, R> {
+    type Error = EitherOrBoth<L, R>;
+    fn try_from(quither: Quither<L, R, true, has_neither, true>) -> Result<Self, Self::Error> {
+        match quither {
+            Quither::<L, R, true, has_neither, true>::Left(l) => Err(EitherOrBoth::Left(l)),
+            Quither::<L, R, true, has_neither, true>::Right(r) => Err(EitherOrBoth::Right(r)),
+            #[neither]
+            Quither::<L, R, true, has_neither, true>::Neither => Ok(Quither::Neither),
+            Quither::<L, R, true, has_neither, true>::Both(l, r) => Err(EitherOrBoth::Both(l, r)),
+        }
+    }
+}
+
+/// Demotes a type with `Either` and `Neither` variants to a type without those variants.
+#[quither(!has_neither && !has_both)]
+impl<L, R> TryFrom<Quither<L, R, has_either, true, true>> for Quither<L, R> {
+    type Error = NeitherOrBoth<L, R>;
+    fn try_from(quither: Quither<L, R, has_either, true, true>) -> Result<Self, Self::Error> {
+        match quither {
+            #[either]
+            Quither::<L, R, has_either, true, true>::Left(l) => Ok(Quither::Left(l)),
+            #[either]
+            Quither::<L, R, has_either, true, true>::Right(r) => Ok(Quither::Right(r)),
+            Quither::<L, R, has_either, true, true>::Neither => Err(NeitherOrBoth::Neither),
+            Quither::<L, R, has_either, true, true>::Both(l, r) => Err(NeitherOrBoth::Both(l, r)),
         }
     }
 }
