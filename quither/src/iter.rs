@@ -19,6 +19,11 @@ use ::quither_proc_macros::quither;
 
 #[quither]
 impl<L, R> Quither<L, R> {
+    /// Returns a `Quither` of iterators over the inner values.
+    ///
+    /// Each variant is mapped to its corresponding iterator using `IntoIterator`.
+    /// The returned type is `Quither<L::IntoIter, R::IntoIter>`, where each variant
+    /// contains the iterator for the inner value. The iterator's `Item` type is `L::Item`.
     #[quither(has_either && !has_both)]
     pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
     where
@@ -35,6 +40,18 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Converts the inner value(s) into their corresponding iterators.
+    ///
+    /// For each variant, returns a `Quither` wrapping the result of `into_iter` on the inner value.
+    /// If the variant is `Both`, both values are converted. The `Neither` variant yields `Quither::Neither`.
+    ///
+    /// # Both variant
+    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
+    /// it yields all items from the left iterator, then from the right.  
+    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
+    /// on the left iterator and checks if it is `None` before proceeding to the right.
+    /// This may result in performance overhead, so using this method with the `Both` variant
+    /// is discouraged for performance-critical code.
     #[quither(has_either && has_both)]
     pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
     where
@@ -54,6 +71,11 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a `Quither` of iterators over references to the inner values.
+    ///
+    /// Each variant is mapped to an iterator over references using `IntoIterator`.
+    /// The returned type is `Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>`,
+    /// where each variant contains the iterator for the reference. The iterator's `Item` type is `<&L as IntoIterator>::Item`.
     #[quither(has_either && !has_both)]
     pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
@@ -70,6 +92,19 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a `Quither` of iterators over references to the inner values.
+    ///
+    /// Each variant is mapped to an iterator over references using `IntoIterator`.
+    /// The returned type is `Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>`,
+    /// where each variant contains the iterator for the reference. The iterator's `Item` type is `<&L as IntoIterator>::Item`.
+    ///
+    /// # Both variant
+    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
+    /// it yields all items from the left iterator, then from the right.  
+    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
+    /// on the left iterator and checks if it is `None` before proceeding to the right.
+    /// This may result in performance overhead, so using this method with the `Both` variant
+    /// is discouraged for performance-critical code.
     #[quither(has_either && has_both)]
     pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
@@ -89,6 +124,11 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a `Quither` of iterators over mutable references to the inner values.
+    ///
+    /// Each variant is mapped to an iterator over mutable references using `IntoIterator`.
+    /// The returned type is `Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>`,
+    /// where each variant contains the iterator for the mutable reference. The iterator's `Item` type is `<&mut L as IntoIterator>::Item`.
     #[quither(has_either && !has_both)]
     pub fn iter_mut(
         &mut self,
@@ -107,6 +147,19 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a `Quither` of iterators over mutable references to the inner values.
+    ///
+    /// Each variant is mapped to an iterator over mutable references using `IntoIterator`.
+    /// The returned type is `Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>`,
+    /// where each variant contains the iterator for the mutable reference. The iterator's `Item` type is `<&mut L as IntoIterator>::Item`.
+    ///
+    /// # Both variant
+    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
+    /// it yields all items from the left iterator, then from the right.  
+    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
+    /// on the left iterator and checks if it is `None` before proceeding to the right.
+    /// This may result in performance overhead, so using this method with the `Both` variant
+    /// is discouraged for performance-critical code.
     #[quither(has_either && has_both)]
     pub fn iter_mut(
         &mut self,
@@ -128,6 +181,12 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns an iterator that yields an enum value representing items from the left and right iterators.
+    ///
+    /// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
+    /// For example, when iterating over a pair of iterators, the item may be `Both(l, r)` if both have items,
+    /// or `Left(l)`/`Right(r)` if only one side has items left. The set of variants in the yielded item depends on the state of the iterators,
+    /// and may differ from the enum type used to construct this iterator.
     #[quither(has_either || has_both)]
     pub fn factor_into_iter(self) -> IterQuither<L::IntoIter, R::IntoIter>
     where
@@ -137,6 +196,11 @@ impl<L, R> Quither<L, R> {
         IterQuither(self.map2(L::into_iter, R::into_iter))
     }
 
+    /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by reference.
+    ///
+    /// The returned iterator's `Item` type is an enum supporting `Left`, `Right`, and `Both` variants as needed,
+    /// depending on which underlying iterators still have items. This allows handling cases where the two iterators
+    /// have different lengths.
     #[quither(has_either || has_both)]
     pub fn factor_iter(
         &self,
@@ -151,6 +215,11 @@ impl<L, R> Quither<L, R> {
         ))
     }
 
+    /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by mutable reference.
+    ///
+    /// The returned iterator's `Item` type is an enum supporting `Left`, `Right`, and `Both` variants as needed,
+    /// depending on which underlying iterators still have items. This allows handling cases where the two iterators
+    /// have different lengths.
     #[quither(has_either || has_both)]
     pub fn factor_iter_mut(
         &mut self,
@@ -166,6 +235,10 @@ impl<L, R> Quither<L, R> {
     }
 }
 
+/// Implements `Iterator` for the enum, yielding items from the underlying iterator(s).
+///
+/// The `Item` type is the same as the item type of the left iterator. For each variant, yields items from the corresponding iterator.
+/// For the `Neither` variant, always yields `None`.
 #[quither(has_either && !has_both)]
 impl<L, R> Iterator for Quither<L, R>
 where
@@ -197,6 +270,11 @@ where
     }
 }
 
+/// Implements `Iterator` for the enum, yielding items from the underlying iterator(s).
+///
+/// The `Item` type is the same as the item type of the left iterator. For the `Both` variant, yields all items from the left iterator first;
+/// once the left iterator is exhausted, yields items from the right iterator. This is similar to `Iterator::chain`,
+/// but always calls `next()` on the left iterator and checks for `None` on each call, which may have performance implications.
 #[quither(has_both)]
 impl<L, R> Iterator for Quither<L, R>
 where
@@ -305,10 +383,21 @@ where
     }
 }
 
+/// An iterator that yields an enum value representing items from the left and right iterators.
+///
+/// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
+/// For example, when iterating over a pair of iterators, the item may be `Both(l, r)` if both have items,
+/// or `Left(l)`/`Right(r)` if only one side has items left. The set of variants in the yielded item depends on the state of the iterators,
+/// and may differ from the enum type used to construct this iterator.
 #[quither(has_either || has_both)]
 #[derive(Debug, Clone)]
 pub struct IterQuither<L, R>(Quither<L, R>);
 
+/// Returns the next item from the underlying iterators, wrapped in one of the variants.
+///
+/// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
+/// For example, when iterating a pair of iterators, this iterator yields `Both(l, r)` while both iterators yield items,
+/// then `Left(l)` or `Right(r)` if only one side has items left. This allows handling cases where the two iterators have different lengths.
 #[quither(has_either || has_both)]
 impl<L, R> Iterator for IterQuither<L, R>
 where
