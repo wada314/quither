@@ -10,6 +10,9 @@ readme = "README.md"
 keywords = ["enum", "either", "data-structure"]
 categories = ["data-structures", "rust-patterns"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 replace_with = "0.1.7"
 quither-proc-macros = { version = "0.1.0", path = "../quither-proc-macros" }
