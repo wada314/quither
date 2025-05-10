@@ -26,16 +26,12 @@ use ::quither_proc_macros::quither;
 #[cfg(feature = "use_std")]
 use ::std::io::{BufRead, Read, Result as IoResult, Seek, SeekFrom};
 
-/// Implement `Read` for `Quither<L, R>` if `L` and `R` implement `Read`.
+/// Provides Read, chaining Left then Right for Both, otherwise delegating.
 ///
-/// The implementation for `Left`, `Right` or `Neither` case are trivial;
-/// it just returns the inner value's result directly, or returns `Ok(0)` if the variant is `Neither`.
-///
-/// The implementation for `Both` case is little more complex, and is slightly different with
-/// the [`std::io::Read::chain`] method. For every call to `read`, it first tries to read data
-/// from `Left`, then from `Right` if there is no data read from `Left`.
-/// (where the [`std::io::Read::chain`] method will never try again to read from the first
-/// reader once it returns `Ok(0)`).
+/// Requires both `L: Read` and `R: Read`. For the `Left`, `Right`, or `Neither` variants, this
+/// simply delegates to the inner value or returns `Ok(0)`. For the `Both` variant, it first tries
+/// to read from `Left`; if that returns 0, it then reads from `Right`. This behavior differs from
+/// `std::io::Read::chain`, which never retries the first reader after it returns 0 bytes.
 #[cfg(feature = "use_std")]
 #[quither]
 impl<L, R> Read for Quither<L, R>
@@ -67,13 +63,12 @@ where
     }
 }
 
-/// Implement `BufRead` for `Quither<L, R>` if `L` and `R` implement `BufRead`.
+/// Provides BufRead, but only for types that do not include the Both variant.
 ///
-/// Surprisingly, this trait impl does not support a type containing `Both` variant,
-/// where the plain [`std::io::Read`] trait does.
-/// This is because of the `BufRead::consume` method cannot tell which reader to consume from.
-/// Instead, you can use [`std::io::Read::chain`] method to chain the readers together,
-/// so that you can combine two readers into one.
+/// Requires both `L: BufRead` and `R: BufRead`. This implementation is only available for types
+/// that do not include the Both variant, because `BufRead::consume` cannot safely choose which
+/// reader to consume from if Both is present. If you want to combine two readers, use
+/// `std::io::Read::chain` instead.
 #[cfg(feature = "use_std")]
 #[quither(!has_both)]
 impl<L, R> BufRead for Quither<L, R>
@@ -104,6 +99,11 @@ where
     }
 }
 
+/// Provides Seek, but only for types that do not include the Both variant.
+///
+/// Requires both `L: Seek` and `R: Seek`. This implementation is only available for types that do
+/// not include the Both variant. It delegates to the inner value or returns `Ok(0)` for the Neither
+/// variant.
 #[cfg(feature = "use_std")]
 #[quither(!has_both)]
 impl<L, R> Seek for Quither<L, R>
@@ -123,6 +123,10 @@ where
     }
 }
 
+/// Dereferences to the inner value, regardless of variant.
+///
+/// Requires both `L: Deref` and `R: Deref<Target = L::Target>`. This allows dereferencing to the
+/// inner value, regardless of which variant is used.
 impl<L, R> Deref for Either<L, R>
 where
     L: Deref,
@@ -138,6 +142,10 @@ where
     }
 }
 
+/// Allows mutable dereference to the inner value, for any variant.
+///
+/// Requires both `L: DerefMut` and `R: DerefMut<Target = L::Target>`. This allows mutable
+/// dereferencing to the inner value for any variant.
 impl<L, R> DerefMut for Either<L, R>
 where
     L: DerefMut,
@@ -151,6 +159,10 @@ where
     }
 }
 
+/// Formats the pair type for display, showing the variant and its contents.
+///
+/// Requires both `L: Display` and `R: Display`. The output format reflects the variant and its
+/// inner value(s).
 #[quither]
 impl<L, R> Display for Quither<L, R>
 where
@@ -171,6 +183,10 @@ where
     }
 }
 
+/// Delegates Error trait methods to the inner value.
+///
+/// Requires both `L: Error` and `R: Error`. Error source, description, and cause are delegated to
+/// the inner value.
 impl<L, R> Error for Either<L, R>
 where
     L: Error,
@@ -202,7 +218,11 @@ where
     // TODO: nightly methods?
 }
 
-/// Note `Extend` requires the item type `T` to be `Clone` if `Both` variant is present.
+/// Extends with items, only for types that do not include the Neither or Both variants.
+///
+/// Requires both `L: Extend<T>` and `R: Extend<T>`. This implementation is only available for types
+/// that do not include the Neither or Both variants. If the type includes the Both variant, use the
+/// implementation that requires `T: Clone`, which extends both inner values with cloned items.
 #[quither(!has_neither && !has_both)]
 impl<L, R, T> Extend<T> for Quither<L, R>
 where
@@ -219,7 +239,10 @@ where
     }
 }
 
-/// Note `Extend` requires the item type `T` to be `Clone` if `Both` variant is present.
+/// Extends both inner values of Both with cloned items, only for types that include the Both variant.
+///
+/// Requires `L: Extend<T>`, `R: Extend<T>`, and `T: Clone`. For types that include the Both variant,
+/// both inner values are extended with cloned items from the iterator.
 #[quither(!has_neither && has_both)]
 impl<L, R, T> Extend<T> for Quither<L, R>
 where
@@ -253,6 +276,10 @@ where
     }
 }
 
+/// Polls the inner future, matching the current variant.
+///
+/// Requires both `L: Future` and `R: Future<Output = L::Output>`. Polling this type will poll the
+/// inner future, matching the current variant.
 impl<L, R> Future for Either<L, R>
 where
     L: Future,
