@@ -2,6 +2,11 @@
 name = "quither-proc-macros"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
+description = "A proc-macro for the quither crate."
+documentation = "https://docs.rs/quither-proc-macros/latest/quither_proc_macros/"
+repository = "https://github.com/wada314/quither"
+readme = "README.md"
 
 [dependencies]
 proc-macro2 = "1.0.95"
@@ -12,5 +17,6 @@ syn = { version = "2.0.101", features = ["full", "visit", "visit-mut"] }
 syn = { version = "2.0.101", features = [
     "extra-traits", # For testing
 ] }
+
 [lib]
 proc-macro = true

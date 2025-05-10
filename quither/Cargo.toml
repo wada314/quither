@@ -2,10 +2,17 @@
 name = "quither"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
+description = "A flexible enum-based utility for representing values that may be on the left, right, neither, or both sides."
+documentation = "https://docs.rs/quither/latest/quither/"
+repository = "https://github.com/wada314/quither"
+readme = "README.md"
+keywords = ["enum", "either", "data-structure"]
+categories = ["data-structures", "rust-patterns"]
 
 [dependencies]
 replace_with = "0.1.7"
-quither-proc-macros = { path = "../quither-proc-macros" }
+quither-proc-macros = { version = "0.1.0", path = "../quither-proc-macros" }
 itertools = { version = "0.14.0", optional = true }
 
 [features]
