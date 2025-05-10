@@ -190,3 +190,49 @@ impl<L, R> TryFrom<Quither<L, R, has_either, true, true>> for Quither<L, R> {
         }
     }
 }
+
+/// Converts a `quither::EitherOrBoth` to an `itertools::EitherOrBoth`.
+#[cfg(feature = "itertools")]
+impl<L, R> From<EitherOrBoth<L, R>> for ::itertools::EitherOrBoth<L, R> {
+    fn from(either_or_both: EitherOrBoth<L, R>) -> Self {
+        match either_or_both {
+            EitherOrBoth::Left(l) => ::itertools::EitherOrBoth::Left(l),
+            EitherOrBoth::Right(r) => ::itertools::EitherOrBoth::Right(r),
+            EitherOrBoth::Both(l, r) => ::itertools::EitherOrBoth::Both(l, r),
+        }
+    }
+}
+
+/// Converts an `itertools::EitherOrBoth` to a `quither::EitherOrBoth`.
+#[cfg(feature = "itertools")]
+impl<L, R> From<::itertools::EitherOrBoth<L, R>> for EitherOrBoth<L, R> {
+    fn from(either_or_both: ::itertools::EitherOrBoth<L, R>) -> Self {
+        match either_or_both {
+            ::itertools::EitherOrBoth::Left(l) => EitherOrBoth::Left(l),
+            ::itertools::EitherOrBoth::Right(r) => EitherOrBoth::Right(r),
+            ::itertools::EitherOrBoth::Both(l, r) => EitherOrBoth::Both(l, r),
+        }
+    }
+}
+
+/// Converts a `quither::Either` to an `itertools::Either`.
+#[cfg(feature = "itertools")]
+impl<L, R> From<Either<L, R>> for ::itertools::Either<L, R> {
+    fn from(either: Either<L, R>) -> Self {
+        match either {
+            Either::Left(l) => ::itertools::Either::Left(l),
+            Either::Right(r) => ::itertools::Either::Right(r),
+        }
+    }
+}
+
+/// Converts an `itertools::Either` to a `quither::Either`.
+#[cfg(feature = "itertools")]
+impl<L, R> From<::itertools::Either<L, R>> for Either<L, R> {
+    fn from(either: ::itertools::Either<L, R>) -> Self {
+        match either {
+            ::itertools::Either::Left(l) => Either::Left(l),
+            ::itertools::Either::Right(r) => Either::Right(r),
+        }
+    }
+}

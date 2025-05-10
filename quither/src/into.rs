@@ -20,9 +20,9 @@ impl<L, R> Quither<L, R> {
     #[quither(!has_neither)]
     /// Converts to the left value, consuming self.
     ///
-    /// Only available for types that do not include the Neither variant. If the value is Left, returns
-    /// the inner value. If the value is Right, converts it into L. If the value is Both, returns the
-    /// left value. Panics if called on Neither.
+    /// Only available for types that do not include the `Neither` variant. If the value is `Left`, returns
+    /// the inner value. If the value is `Right`, converts it into `L`. If the value is `Both`, returns the
+    /// left value. Panics if called on `Neither`.
     pub fn into_left(self) -> L
     where
         R: Into<L>,
@@ -42,9 +42,9 @@ impl<L, R> Quither<L, R> {
     #[quither(!has_neither)]
     /// Converts to the right value, consuming self.
     ///
-    /// Only available for types that do not include the Neither variant. If the value is Right, returns
-    /// the inner value. If the value is Left, converts it into R. If the value is Both, returns the
-    /// right value. Panics if called on Neither.
+    /// Only available for types that do not include the `Neither` variant. If the value is `Right`, returns
+    /// the inner value. If the value is `Left`, converts it into `R`. If the value is `Both`, returns the
+    /// right value. Panics if called on `Neither`.
     pub fn into_right(self) -> R
     where
         L: Into<R>,
@@ -63,10 +63,10 @@ impl<L, R> Quither<L, R> {
 }
 
 impl<L, R> Either<L, R> {
-    /// Converts either variant into a common type using Into.
+    /// Converts either variant into a common type using `Into`.
     ///
-    /// Consumes self and converts the inner value to type T using Into, regardless of which variant is
-    /// present. Both L and R must implement Into<T>.
+    /// Consumes self and converts the inner value to type T using `Into`, regardless of which variant is
+    /// present. Both `L` and `R` must implement `Into<T>`.
     pub fn either_into<T>(self) -> T
     where
         L: Into<T>,

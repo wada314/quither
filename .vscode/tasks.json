@@ -4,7 +4,10 @@
         {
             "type": "cargo",
             "command": "build",
-            "args": [],
+            "args": [
+                "--features",
+                "itertools"
+            ],
             "problemMatcher": [
                 "$rustc"
             ],
@@ -26,7 +29,9 @@
             "type": "cargo",
             "command": "doc",
             "args": [
-                "--no-deps"
+                "--no-deps",
+                "--features",
+                "itertools"
             ],
             "problemMatcher": [
                 "$rustc"
@@ -47,6 +52,8 @@
             "command": "doc",
             "args": [
                 "--no-deps",
+                "--features",
+                "itertools",
                 "--open"
             ],
             "problemMatcher": [

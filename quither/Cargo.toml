@@ -6,7 +6,9 @@ edition = "2024"
 [dependencies]
 replace_with = "0.1.7"
 quither-proc-macros = { path = "../quither-proc-macros" }
+itertools = { version = "0.14.0", optional = true }
 
 [features]
 default = ["use_std"]
 use_std = []
+itertools = ["dep:itertools"]
