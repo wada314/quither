@@ -18,6 +18,12 @@ use quither_proc_macros::quither;
 
 #[quither]
 impl<L, R> Quither<L, R> {
+    /// Inserts a left value if not present and returns a mutable reference to it.
+    ///
+    /// If the left value is already present, returns it. If the current variant is `Right`, promotes
+    /// to `Both` and inserts the left value. If the current variant is `Neither`, promotes to `Left`.
+    /// If the current variant is `Both`, returns the left value. Only available for types supporting
+    /// the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn insert_left(&mut self, #[allow(unused)] l: L) -> &mut L {
         match self {
@@ -45,6 +51,12 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Inserts a right value if not present and returns a mutable reference to it.
+    ///
+    /// If the right value is already present, returns it. If the current variant is `Left`, promotes
+    /// to `Both` and inserts the right value. If the current variant is `Neither`, promotes to `Right`.
+    /// If the current variant is `Both`, returns the right value. Only available for types supporting
+    /// the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn insert_right(&mut self, #[allow(unused)] r: R) -> &mut R {
         match self {
@@ -72,6 +84,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Inserts both left and right values, returning mutable references to both.
+    ///
+    /// If the current variant is not `Both`, promotes to `Both` and inserts the values. Only
+    /// available for types that can represent the `Both` variant.
     #[quither(has_both)]
     pub fn insert_both(
         &mut self,
@@ -107,16 +123,31 @@ impl<L, R> Quither<L, R> {
         (l, r)
     }
 
+    /// Returns a mutable reference to the left value, inserting one if not present.
+    ///
+    /// If the left value is already present, returns it. Otherwise, inserts the provided value (using
+    /// promotion if necessary) and returns a mutable reference to it. Only available for types
+    /// supporting the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn left_or_insert(&mut self, l: L) -> &mut L {
         self.left_or_insert_with(move || l)
     }
 
+    /// Returns a mutable reference to the right value, inserting one if not present.
+    ///
+    /// If the right value is already present, returns it. Otherwise, inserts the provided value (using
+    /// promotion if necessary) and returns a mutable reference to it. Only available for types
+    /// supporting the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn right_or_insert(&mut self, r: R) -> &mut R {
         self.right_or_insert_with(move || r)
     }
 
+    /// Returns a mutable reference to the left value, inserting one with a closure if not present.
+    ///
+    /// If the left value is already present, returns it. Otherwise, inserts a value produced by the
+    /// closure (using promotion if necessary) and returns a mutable reference to it. Only available
+    /// for types supporting the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn left_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut L
     where
@@ -154,6 +185,11 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a mutable reference to the right value, inserting one with a closure if not present.
+    ///
+    /// If the right value is already present, returns it. Otherwise, inserts a value produced by the
+    /// closure (using promotion if necessary) and returns a mutable reference to it. Only available
+    /// for types supporting the necessary variant transitions.
     #[quither((!has_neither || has_either) && (!has_either || has_both))]
     pub fn right_or_insert_with<F>(&mut self, #[allow(unused)] f: F) -> &mut R
     where
@@ -191,11 +227,23 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Ensures the left value is present, keeping the right value if possible.
+    ///
+    /// If the left value is already present, returns it. If not, inserts a value (using the provided
+    /// value or closure) and returns a mutable reference to it. If possible, keeps the right value
+    /// (promoting to `Both` if supported), otherwise may discard it. Only available for types that
+    /// can represent the left value.
     #[quither(!has_neither || has_either)]
     pub fn ensure_left(&mut self, l: L) -> &mut L {
         self.ensure_left_with(move || l)
     }
 
+    /// Ensures the right value is present, keeping the left value if possible.
+    ///
+    /// If the right value is already present, returns it. If not, inserts a value (using the provided
+    /// closure) and returns a mutable reference to it. If possible, keeps the left value (promoting
+    /// to `Both` if supported), otherwise may discard it. Only available for types that can represent
+    /// the right value.
     #[quither(!has_neither || has_either)]
     pub fn ensure_right(&mut self, r: R) -> &mut R {
         self.ensure_right_with(move || r)
@@ -252,6 +300,12 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Ensures the right value is present, keeping the left value if possible.
+    ///
+    /// If the right value is already present, returns it. If not, inserts a value (using the provided
+    /// closure) and returns a mutable reference to it. If possible, keeps the left value (promoting
+    /// to `Both` if supported), otherwise may discard it. Only available for types that can represent
+    /// the right value.
     #[quither(!has_neither || has_either)]
     pub fn ensure_right_with<F>(&mut self, #[allow(unused)] f: F) -> &mut R
     where
