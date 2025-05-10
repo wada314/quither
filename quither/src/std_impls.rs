@@ -20,6 +20,8 @@ use super::*;
 use ::core::error::Error;
 use ::core::fmt::Display;
 use ::core::ops::{Deref, DerefMut};
+use ::core::pin::Pin;
+use ::core::task::{Context, Poll};
 use ::quither_proc_macros::quither;
 #[cfg(feature = "use_std")]
 use ::std::io::{BufRead, Read, Result as IoResult, Seek, SeekFrom};
@@ -247,6 +249,20 @@ where
                 }
                 (Wrap(l), Wrap(r)).extend(tuple_iter);
             }
+        }
+    }
+}
+
+impl<L, R> Future for Either<L, R>
+where
+    L: Future,
+    R: Future<Output = L::Output>,
+{
+    type Output = L::Output;
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.as_pin_mut() {
+            Either::Left(l) => l.poll(ctx),
+            Either::Right(r) => r.poll(ctx),
         }
     }
 }
