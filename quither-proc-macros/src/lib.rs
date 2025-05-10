@@ -18,9 +18,7 @@ use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::spanned::Spanned;
-use ::syn::visit::{
-    Visit, visit_ident, visit_path, visit_path_arguments, visit_path_segment, visit_type,
-};
+use ::syn::visit::{Visit, visit_ident, visit_path, visit_path_arguments};
 use ::syn::visit_mut::{
     VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
     visit_item_struct_mut, visit_item_type_mut, visit_path_mut,
@@ -28,8 +26,8 @@ use ::syn::visit_mut::{
 use ::syn::{
     BinOp, Block, Expr, ExprBinary, ExprBlock, ExprLit, ExprParen, ExprPath, ExprUnary,
     GenericArgument, GenericParam, Generics, Ident, ImplItem, Item, ItemImpl, ItemStruct, Lit,
-    LitBool, Path, PathArguments, PathSegment, PredicateType, Stmt, Type, TypeParam, TypePath,
-    UnOp, WherePredicate, parse, parse_macro_input,
+    LitBool, Path, PathArguments, PathSegment, Stmt, Type, TypePath, UnOp, WhereClause,
+    WherePredicate, parse, parse_macro_input,
 };
 
 #[proc_macro_attribute]
@@ -129,25 +127,12 @@ impl VisitMut for CodeProcessor {
 
         // If the `<L, R>` arguments are not found in the impl, we need to remove them.
         // This can happen when only the `Neither` type is used.
-        let mut type_param_finder = TypeParamFinder::default();
-        type_param_finder.visit_type(&item_impl.self_ty);
-        if let Some((_, trait_path, _)) = &item_impl.trait_ {
-            type_param_finder.visit_path(trait_path);
+        let unused_type_params = self
+            .remove_unused_type_params(item_impl)
+            .collect::<Vec<_>>();
+        if let Some(where_clause) = &mut item_impl.generics.where_clause {
+            self.remove_where_clause_for_type_params(where_clause, unused_type_params.iter());
         }
-
-        item_impl.generics.params = item_impl
-            .generics
-            .params
-            .iter()
-            .filter(|param| {
-                let GenericParam::Type(tp) = param else {
-                    return false;
-                };
-                type_param_finder.does_appear(&tp.ident)
-            })
-            .cloned()
-            .collect();
-        item_impl.generics.params.pop_punct();
     }
 
     fn visit_expr_match_mut(&mut self, ma: &mut syn::ExprMatch) {
@@ -260,6 +245,63 @@ impl CodeProcessor {
         } else {
             None
         }
+    }
+
+    fn remove_unused_type_params(&self, item_impl: &mut ItemImpl) -> impl Iterator<Item = Ident> {
+        let mut type_param_finder = TypeParamFinder::default();
+        type_param_finder.visit_type(&item_impl.self_ty);
+        if let Some((_, trait_path, _)) = &item_impl.trait_ {
+            type_param_finder.visit_path(trait_path);
+        }
+        let (used, unused) = item_impl
+            .generics
+            .params
+            .iter()
+            .cloned()
+            .partition::<Vec<_>, _>(|param| {
+                let GenericParam::Type(tp) = param else {
+                    return false;
+                };
+                type_param_finder.does_appear(&tp.ident)
+            });
+        item_impl.generics.params = used.into_iter().collect();
+        item_impl.generics.params.pop_punct();
+        unused.into_iter().filter_map(|param| {
+            let GenericParam::Type(tp) = param else {
+                return None;
+            };
+            Some(tp.ident)
+        })
+    }
+
+    fn remove_where_clause_for_type_params<'a>(
+        &self,
+        where_clause: &mut WhereClause,
+        unused_type_params: impl Iterator<Item = &'a Ident> + Clone,
+    ) {
+        where_clause.predicates = where_clause
+            .predicates
+            .iter()
+            .cloned()
+            .filter_map(|pred| {
+                let WherePredicate::Type(tp) = &pred else {
+                    return Some(pred);
+                };
+                let mut finder = TypeParamFinder::default();
+                finder.visit_type(&tp.bounded_ty);
+                if unused_type_params
+                    .clone()
+                    .any(|param| finder.does_appear(param))
+                {
+                    // Any of the given unused type params is found in the bounded type,
+                    // so we need to remove this predicate.
+                    None
+                } else {
+                    Some(pred)
+                }
+            })
+            .collect();
+        where_clause.predicates.pop_punct();
     }
 
     fn check_attr_is_true(&self, attr: &syn::Attribute) -> Option<bool> {
@@ -441,34 +483,4 @@ fn test_visit_path_mut() {
         path,
         parse_quote_spanned! { span => EitherOrNeither<L, R, > }
     );
-}
-
-#[test]
-fn test_check_lr_params_exist_in_impl() {
-    use ::proc_macro2::Span;
-    use ::syn::parse_quote_spanned;
-
-    let span = Span::call_site();
-    let cp_neither = CodeProcessor {
-        has_either: false,
-        has_neither: true,
-        has_both: false,
-    };
-    let cp_quither = CodeProcessor {
-        has_either: true,
-        has_neither: true,
-        has_both: true,
-    };
-
-    let impl_item = parse_quote_spanned! { span =>
-        impl<L, R> Quither<L, R> {}
-    };
-    assert!(!cp_neither.check_lr_params_exist_in_impl(&impl_item));
-    assert!(cp_quither.check_lr_params_exist_in_impl(&impl_item));
-
-    let impl_item = parse_quote_spanned! { span =>
-        impl<L, R> From<Quither<L, R>> for EitherOrBoth<L, R> {}
-    };
-    assert!(!cp_neither.check_lr_params_exist_in_impl(&impl_item));
-    assert!(cp_quither.check_lr_params_exist_in_impl(&impl_item));
 }
