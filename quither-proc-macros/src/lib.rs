@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::std::collections::HashSet;
+
 use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
 use ::syn::spanned::Spanned;
-use ::syn::visit::{Visit, visit_path, visit_path_segment, visit_type};
+use ::syn::visit::{
+    Visit, visit_ident, visit_path, visit_path_arguments, visit_path_segment, visit_type,
+};
 use ::syn::visit_mut::{
     VisitMut, visit_expr_match_mut, visit_expr_mut, visit_item_impl_mut, visit_item_mut,
     visit_item_struct_mut, visit_item_type_mut, visit_path_mut,
@@ -104,8 +108,6 @@ impl VisitMut for CodeProcessor {
     }
 
     fn visit_item_impl_mut(&mut self, item_impl: &mut ItemImpl) {
-        let lr_params_exist = self.check_lr_params_exist_in_impl(item_impl);
-
         visit_item_impl_mut(self, item_impl);
 
         item_impl.items.retain_mut(|item| {
@@ -127,46 +129,25 @@ impl VisitMut for CodeProcessor {
 
         // If the `<L, R>` arguments are not found in the impl, we need to remove them.
         // This can happen when only the `Neither` type is used.
-        if !lr_params_exist && item_impl.generics.params.len() == 2 {
-            // Super ad-hoc implementation, remove the param named `L` and `R`.
-            item_impl.generics.params = item_impl
-                .generics
-                .params
-                .clone()
-                .into_iter()
-                .filter(|param| {
-                    if let GenericParam::Type(TypeParam { ident, .. }) = param {
-                        ident.to_string() != "L" && ident.to_string() != "R"
-                    } else {
-                        true
-                    }
-                })
-                .collect();
-            // Super ad-hoc implementation 2
-            // remove where clause if the type before colon is `L` or `R`.
-            // Note this implementation is not handling the case that `L` or `R` appears in
-            // other places.
-            item_impl.generics.where_clause =
-                item_impl.generics.where_clause.clone().map(|mut wh| {
-                    wh.predicates = wh
-                        .predicates
-                        .into_iter()
-                        .filter(|pred| {
-                            if let WherePredicate::Type(PredicateType {
-                                bounded_ty: Type::Path(TypePath { path, .. }),
-                                ..
-                            }) = &pred
-                            {
-                                if let Some(ident) = path.get_ident() {
-                                    return ident.to_string() != "L" && ident.to_string() != "R";
-                                }
-                            }
-                            return true;
-                        })
-                        .collect();
-                    wh
-                })
+        let mut type_param_finder = TypeParamFinder::default();
+        type_param_finder.visit_type(&item_impl.self_ty);
+        if let Some((_, trait_path, _)) = &item_impl.trait_ {
+            type_param_finder.visit_path(trait_path);
         }
+
+        item_impl.generics.params = item_impl
+            .generics
+            .params
+            .iter()
+            .filter(|param| {
+                let GenericParam::Type(tp) = param else {
+                    return false;
+                };
+                type_param_finder.does_appear(&tp.ident)
+            })
+            .cloned()
+            .collect();
+        item_impl.generics.params.pop_punct();
     }
 
     fn visit_expr_match_mut(&mut self, ma: &mut syn::ExprMatch) {
@@ -348,18 +329,6 @@ impl CodeProcessor {
         }
     }
 
-    fn check_lr_params_exist_in_impl(&self, impl_item: &syn::ItemImpl) -> bool {
-        let mut lr_argument_finder = LrArgumentFinder {
-            found: false,
-            processor: self,
-        };
-        visit_type(&mut lr_argument_finder, &impl_item.self_ty);
-        if let Some((_, trait_path, _)) = &impl_item.trait_ {
-            visit_path(&mut lr_argument_finder, trait_path);
-        }
-        lr_argument_finder.found
-    }
-
     fn quither_name_gen(bool_args: (bool, bool, bool)) -> &'static str {
         match bool_args {
             (true, true, true) => "Quither",
@@ -374,29 +343,35 @@ impl CodeProcessor {
     }
 }
 
-struct LrArgumentFinder<'a> {
-    found: bool,
-    processor: &'a CodeProcessor,
+#[derive(Default, Debug)]
+struct TypeParamFinder {
+    idents: HashSet<Ident>,
 }
 
-impl<'a, 'ast> Visit<'ast> for LrArgumentFinder<'a> {
-    fn visit_path_segment(&mut self, segment: &'ast PathSegment) {
-        visit_path_segment(self, segment);
+impl TypeParamFinder {
+    fn does_appear(&self, ident: &Ident) -> bool {
+        self.idents.contains(ident)
+    }
+}
 
-        if !segment.ident.to_string().contains("Quither") {
-            return;
+impl<'ast> Visit<'ast> for TypeParamFinder {
+    fn visit_path(&mut self, path: &'ast Path) {
+        visit_path(self, path);
+        if let Some(ident) = path.get_ident() {
+            self.idents.insert(ident.clone());
         }
-        let Some(bool_args) = self
-            .processor
-            .implicit_345th_bool_arguments_for_path_segment(segment)
-        else {
-            return;
-        };
-        if bool_args != (false, true, false) {
-            // Unless the bool arguments are expressing `Neither` type, we can find the `L` and `R`
-            // arguments.
-            self.found = true;
-        }
+    }
+
+    fn visit_ident(&mut self, ident: &'ast Ident) {
+        visit_ident(self, ident);
+        self.idents.insert(ident.clone());
+    }
+
+    fn visit_path_segment(&mut self, segment: &'ast PathSegment) {
+        // Do recurse into the type params, but not for the segment's ident
+        // because it's already visited in `visit_path`.
+        // We only need the standalone ident, not the path including `::`.
+        visit_path_arguments(self, &segment.arguments);
     }
 }
 
