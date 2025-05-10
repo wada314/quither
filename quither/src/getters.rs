@@ -18,6 +18,7 @@ use quither_proc_macros::quither;
 
 #[quither]
 impl<L, R> Quither<L, R> {
+    /// Returns true if the value contains a left value.
     pub fn has_left(&self) -> bool {
         match self {
             #[either]
@@ -29,6 +30,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns true if the value contains a right value.
     pub fn has_right(&self) -> bool {
         match self {
             #[either]
@@ -40,6 +42,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns true if the value is the left variant.
     pub fn is_left(&self) -> bool {
         match self {
             #[either]
@@ -49,6 +52,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns true if the value is the right variant.
     pub fn is_right(&self) -> bool {
         match self {
             #[either]
@@ -58,6 +62,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns true if the value is the neither variant.
     pub fn is_neither(&self) -> bool {
         match self {
             #[neither]
@@ -67,6 +72,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns true if the value is the both variant.
     pub fn is_both(&self) -> bool {
         match self {
             #[both]
@@ -76,8 +82,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Convert the left side of the variant into an `Option`.
-    /// i.e. `Left(l)` -> `Some(l)`, `Right(_)` -> `None`, `Both(l, _)` -> `Some(l)`.
+    /// Returns `Some` if the left value is present, or `None` otherwise.
     #[quither(has_either || has_both)]
     pub fn left(self) -> Option<L> {
         match self {
@@ -90,8 +95,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Convert the right side of the variant into an `Option`.
-    /// i.e. `Left(_)` -> `None`, `Right(r)` -> `Some(r)`, `Both(_, r)` -> `Some(r)`.
+    /// Returns `Some` if the right value is present, or `None` otherwise.
     #[quither(has_either || has_both)]
     pub fn right(self) -> Option<R> {
         match self {
@@ -104,6 +108,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns both values as a tuple of `Option`s.
     #[quither(has_either || has_both)]
     pub fn left_and_right(self) -> (Option<L>, Option<R>) {
         match self {
@@ -118,8 +123,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// If the variant is a `Left` variant, return the left value.
-    /// Otherwise (even the variant is a `Both` variant), return `None`.
+    /// Returns the left value if the variant is exactly left.
     #[quither(has_either || has_both)]
     pub fn just_left(self) -> Option<L> {
         match self {
@@ -130,8 +134,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// If the variant is a `Right` variant, return the right value.
-    /// Otherwise (even the variant is a `Both` variant), return `None`.
+    /// Returns the right value if the variant is exactly right.
     #[quither(has_either || has_both)]
     pub fn just_right(self) -> Option<R> {
         match self {
@@ -142,6 +145,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns both values as a tuple if the variant is both.
     #[quither(has_either || has_both)]
     pub fn both(self) -> Option<(L, R)> {
         match self {
@@ -152,6 +156,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns a new value with left and right swapped.
     pub fn flip(self) -> Quither<R, L> {
         match self {
             #[either]
@@ -165,11 +170,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Unwrap the left value from the variant.
-    ///
-    /// # Panics
-    ///
-    /// - If the variant is something not containing a left value.
+    /// Unwraps the left value, panicking if not present.
     #[quither(has_either || has_both)]
     pub fn unwrap_left(self) -> L
     where
@@ -187,11 +188,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Unwrap the right value from the variant.
-    ///
-    /// # Panics
-    ///
-    /// - If the variant is something not containing a right value.
+    /// Unwraps the right value, panicking if not present.
     #[quither(has_either || has_both)]
     pub fn unwrap_right(self) -> R
     where
@@ -209,6 +206,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Unwraps both values as a tuple, panicking if not present.
     #[quither(has_either || has_both)]
     pub fn unwrap_both(self) -> (L, R)
     where
@@ -227,11 +225,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Unwrap the left value from the variant.
-    ///
-    /// # Panics
-    ///
-    /// - If the variant is something not containing a left value.
+    /// Unwraps the left value, panicking with a custom message if not present.
     #[quither(has_either || has_both)]
     pub fn expect_left(self, #[allow(unused)] msg: &str) -> L
     where
@@ -249,11 +243,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Unwrap the right value from the variant.
-    ///
-    /// # Panics
-    ///
-    /// - If the variant is something not containing a right value.
+    /// Unwraps the right value, panicking with a custom message if not present.
     #[quither(has_either || has_both)]
     pub fn expect_right(self, #[allow(unused)] msg: &str) -> R
     where
@@ -271,6 +261,7 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Unwraps both values as a tuple, panicking with a custom message if not present.
     #[quither(has_either || has_both)]
     pub fn expect_both(self, #[allow(unused)] msg: &str) -> (L, R)
     where

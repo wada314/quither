@@ -17,7 +17,9 @@ use quither_proc_macros::quither;
 
 #[quither]
 impl<L, R> Quither<L, R> {
-    /// Return left value or given value.
+    /// Returns the left value, or the provided value if not present.
+    ///
+    /// If the left value is present, returns it. Otherwise, returns the provided value.
     #[quither(has_either || has_both)]
     pub fn left_or(self, #[allow(unused)] other: L) -> L {
         match self {
@@ -32,7 +34,9 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return right value or given value.
+    /// Returns the right value, or the provided value if not present.
+    ///
+    /// If the right value is present, returns it. Otherwise, returns the provided value.
     #[quither(has_either || has_both)]
     pub fn right_or(self, #[allow(unused)] other: R) -> R {
         match self {
@@ -47,7 +51,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return the both values as a tuple, or the given value if either side is missing.
+    /// Returns both values as a tuple, or the provided values if either side is missing.
+    ///
+    /// If both values are present, returns them as a tuple. If either side is missing, returns the
+    /// provided value for that side.
     #[quither(has_either || has_both)]
     pub fn both_or(self, #[allow(unused)] l: L, #[allow(unused)] r: R) -> (L, R) {
         match self {
@@ -62,7 +69,9 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return left value or default value.
+    /// Returns the left value, or the default value if not present.
+    ///
+    /// If the left value is present, returns it. Otherwise, returns the default value for the type.
     #[quither(has_either || has_both)]
     pub fn left_or_default(self) -> L
     where
@@ -78,7 +87,9 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return right value or default value.
+    /// Returns the right value, or the default value if not present.
+    ///
+    /// If the right value is present, returns it. Otherwise, returns the default value for the type.
     #[quither(has_either || has_both)]
     pub fn right_or_default(self) -> R
     where
@@ -94,7 +105,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return a tuple of both values, or the default values if either side is missing.
+    /// Returns both values as a tuple, or default values if either side is missing.
+    ///
+    /// If both values are present, returns them as a tuple. If either side is missing, returns the
+    /// default value for that side.
     #[quither(has_either || has_both)]
     pub fn both_or_default(self) -> (L, R)
     where
@@ -113,7 +127,9 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return left value or computes it from a closure.
+    /// Returns the left value, or computes it from a closure if not present.
+    ///
+    /// If the left value is present, returns it. Otherwise, returns the result of the closure.
     #[quither(has_either || has_both)]
     pub fn left_or_else<F>(self, #[allow(unused)] f: F) -> L
     where
@@ -131,7 +147,9 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Return right value or computes it from a closure.
+    /// Returns the right value, or computes it from a closure if not present.
+    ///
+    /// If the right value is present, returns it. Otherwise, returns the result of the closure.
     #[quither(has_either || has_both)]
     pub fn right_or_else<F>(self, #[allow(unused)] f: F) -> R
     where
@@ -149,6 +167,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Returns both values as a tuple, or computes missing values from closures.
+    ///
+    /// If both values are present, returns them as a tuple. If either side is missing, computes the
+    /// missing value using the provided closure.
     #[quither(has_either || has_both)]
     pub fn both_or_else<F, G>(self, #[allow(unused)] f: F, #[allow(unused)] g: G) -> (L, R)
     where
@@ -167,8 +189,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Apply the function `f` on the value in the left position if it is present,
-    /// and then rewrap the result in a same variant of the new type.
+    /// Applies a function to the left value if present, rewrapping the result.
+    ///
+    /// If the left value is present, applies the function and returns the result. Otherwise, returns
+    /// the original value with the same variant.
     #[quither(has_either || has_both)]
     pub fn left_and_then<F, L2>(self, f: F) -> Quither<L2, R>
     where
@@ -186,8 +210,10 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Apply the function `f` on the value in the right position if it is present,
-    /// and then rewrap the result in a same variant of the new type.
+    /// Applies a function to the right value if present, rewrapping the result.
+    ///
+    /// If the right value is present, applies the function and returns the result. Otherwise, returns
+    /// the original value with the same variant.
     #[quither(has_either || has_both)]
     pub fn right_and_then<F, R2>(self, f: F) -> Quither<L, R2>
     where
@@ -208,6 +234,10 @@ impl<L, R> Quither<L, R> {
 
 /// `Either` type exclusive methods.
 impl<L, R> Either<L, R> {
+    /// Applies one of two functions and returns the same type regardless of the variant.
+    ///
+    /// Calls `f` if the value is `Left`, or `g` if the value is `Right`, and always returns a value
+    /// of type `T`.
     pub fn either<F, G, T>(self, f: F, g: G) -> T
     where
         F: FnOnce(L) -> T,
@@ -219,6 +249,10 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// Applies one of two functions with a shared context and returns the same type regardless of the variant.
+    ///
+    /// Calls `f` with the context if the value is `Left`, or `g` with the context if the value is
+    /// `Right`, and always returns a value of type `T`.
     pub fn either_with<Ctx, F, G, T>(self, ctx: Ctx, f: F, g: G) -> T
     where
         F: FnOnce(Ctx, L) -> T,
