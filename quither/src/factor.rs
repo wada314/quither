@@ -72,7 +72,7 @@ impl<L, R, E> Either<Result<L, E>, Result<R, E>> {
     ///
     /// Only available for types with two Result values. If either side is Err, returns Err. Otherwise,
     /// returns Ok with the corresponding variant.
-    pub fn factor_error(self) -> Result<Either<L, R>, E> {
+    pub fn factor_err(self) -> Result<Either<L, R>, E> {
         match self {
             Either::Left(Ok(l)) => Ok(Either::Left(l)),
             Either::Right(Ok(r)) => Ok(Either::Right(r)),
