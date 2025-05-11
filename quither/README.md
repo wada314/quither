@@ -6,8 +6,8 @@ A flexible enum-based utility for representing values that may be on the left, r
 - Provides a generic enum type supporting `Left`, `Right`, `Neither`, and `Both` variants
   - Supports arbitrary combinations of `Either`, `Both`, and `Neither`.
 - Iterator and standard trait support
-- Supposed to be compatible with `itertools`'s `Either` and `EitherOrBoth` types.
-- No-std compatible (with optional std features)
+- (Supposed to) have compatible interfaces with `itertools`'s `Either` and `EitherOrBoth` types.
+- No-std compatible, can be build without `std` features.
 
 ## Example
 ```rust
@@ -40,3 +40,4 @@ match neither_or_both {
 
 ## Crate Features
 - `use_std` (default: enabled): Enables implementations for std types (e.g., Read, BufRead) 
+- `itertools` (default: disabled): Enables `Into` impls from and to `itertools::Either` and `itertools::EitherOrBoth`.

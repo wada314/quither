@@ -84,6 +84,73 @@ impl<L, R> Quither<L, R> {
         }
     }
 
+    /// Applies separate functions to each variant, returning a new pair type with the results.
+    ///
+    /// Applies `f` to the left value and `g` to the right value, and factor out the error.
+    /// The functors are applied in strictly `f` then `g` order, and if either functor returns an error,
+    /// the following functors are not applied and the error is returned.
+    #[quither(has_either || has_both)]
+    pub fn try_map2<F, G, L2, R2, E>(self, f: F, g: G) -> Result<Quither<L2, R2>, E>
+    where
+        F: FnOnce(L) -> Result<L2, E>,
+        G: FnOnce(R) -> Result<R2, E>,
+    {
+        Ok(match self {
+            #[either]
+            Self::Left(l) => Quither::Left(f(l)?),
+            #[either]
+            Self::Right(r) => Quither::Right(g(r)?),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(f(l)?, g(r)?),
+        })
+    }
+
+    /// Applies a function to the left value, returning a new pair type with the results.
+    ///
+    /// Applies `f` to the left value, and factor out the error.
+    /// The right value is unchanged. If `Both` is present, only the left value is transformed.
+    /// If `Neither` is present, returns `Neither`.
+    #[quither(has_either || has_both)]
+    pub fn try_map_left<F, L2, E>(self, f: F) -> Result<Quither<L2, R>, E>
+    where
+        F: FnOnce(L) -> Result<L2, E>,
+    {
+        Ok(match self {
+            #[either]
+            Self::Left(l) => Quither::Left(f(l)?),
+            #[either]
+            Self::Right(r) => Quither::Right(r),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(f(l)?, r),
+        })
+    }
+
+    /// Applies a function to the right value, returning a new pair type with the results.
+    ///
+    /// Applies `f` to the right value, and factor out the error.
+    /// The left value is unchanged. If `Both` is present, only the right value is transformed.
+    /// If `Neither` is present, returns `Neither`.
+    #[quither(has_either || has_both)]
+    pub fn try_map_right<F, R2, E>(self, f: F) -> Result<Quither<L, R2>, E>
+    where
+        F: FnOnce(R) -> Result<R2, E>,
+    {
+        Ok(match self {
+            #[either]
+            Self::Left(l) => Quither::Left(l),
+            #[either]
+            Self::Right(r) => Quither::Right(f(r)?),
+            #[neither]
+            Self::Neither => Quither::Neither,
+            #[both]
+            Self::Both(l, r) => Quither::Both(l, f(r)?),
+        })
+    }
+
     /// Applies functions to each variant with a shared context, for types without `Both`.
     ///
     /// For types with `Either` but not `Both`, applies `f` to the left value and `g` to the right value,
@@ -136,6 +203,8 @@ impl<T> Quither<T, T> {
     ///
     /// For types with `Either` but not `Both`, applies `f` to both values. If `Neither` is present,
     /// returns `Neither`.
+    /// If the type has `Both` variant, then this method has slightly stricter functor bounds
+    /// (`FnOnce` -> `FnMut`).
     #[quither(has_either && !has_both)]
     pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
     where
@@ -153,12 +222,11 @@ impl<T> Quither<T, T> {
 
     /// Applies a function to both values, for types with identical left and right types, with `Both`.
     ///
-    /// For types with `Either` and `Both`, applies `f` to both values. If `Both` is present, both values
-    /// are transformed. If `Neither` is present, returns `Neither`.
+    /// For types with `Both` variant, applies `f` to the left value and the right value, in this order.
     #[quither(has_either && has_both)]
-    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
+    pub fn map<F, T2>(self, mut f: F) -> Quither<T2, T2>
     where
-        F: Fn(T) -> T2,
+        F: FnMut(T) -> T2,
     {
         match self {
             #[either]
@@ -170,6 +238,48 @@ impl<T> Quither<T, T> {
             #[both]
             Quither::Both(l, r) => Quither::Both(f(l), f(r)),
         }
+    }
+
+    /// Applies a function to both values, for types with identical left and right types, without `Both`.
+    ///
+    /// Applies `f` to both values, and factor out the error.
+    /// If `Neither` is present, returns `Neither`.
+    /// If the type has `Both` variant, then this method has slightly stricter functor bounds
+    /// (`FnOnce` -> `FnMut`).
+    #[quither(has_either && !has_both)]
+    pub fn try_map<F, T2, E>(self, f: F) -> Result<Quither<T2, T2>, E>
+    where
+        F: FnOnce(T) -> Result<T2, E>,
+    {
+        Ok(match self {
+            #[either]
+            Quither::Left(l) => Quither::Left(f(l)?),
+            #[either]
+            Quither::Right(r) => Quither::Right(f(r)?),
+            #[neither]
+            Quither::Neither => Quither::Neither,
+        })
+    }
+
+    /// Applies a function to both values, for types with identical left and right types, with `Both`.
+    ///
+    /// Applies `f` to both left and right existing values in this order, and if any of the
+    /// functor calls return an error, then the error is returned.
+    #[quither(has_either && has_both)]
+    pub fn try_map<F, T2, E>(self, mut f: F) -> Result<Quither<T2, T2>, E>
+    where
+        F: FnMut(T) -> Result<T2, E>,
+    {
+        Ok(match self {
+            #[either]
+            Quither::Left(l) => Quither::Left(f(l)?),
+            #[either]
+            Quither::Right(r) => Quither::Right(f(r)?),
+            #[neither]
+            Quither::Neither => Quither::Neither,
+            #[both]
+            Quither::Both(l, r) => Quither::Both(f(l)?, f(r)?),
+        })
     }
 }
 
