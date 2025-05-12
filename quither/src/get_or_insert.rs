@@ -349,4 +349,60 @@ impl<L, R> Quither<L, R> {
             Self::Both(_, r) => r,
         }
     }
+
+    /// Clears the left value.
+    ///
+    /// If the current variant is `Left`, then set the variant to `Neither`.
+    /// If the current variant is `Both`, then set the variant to `Right` and keep the right value.
+    /// Otherwise, do nothing.
+    #[quither((!has_both || has_either) && (!has_either || has_neither))]
+    pub fn clear_left(&mut self) {
+        match self {
+            #[either]
+            Self::Left(_) => {
+                *self = Self::Neither;
+            }
+            #[either]
+            Self::Right(_) => (),
+            #[neither]
+            Self::Neither => (),
+            #[both]
+            Self::Both(_, _) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Both(_, right) = this else {
+                        unreachable!()
+                    };
+                    Self::Right(right)
+                });
+            }
+        }
+    }
+
+    /// Clears the right value.
+    ///
+    /// If the current variant is `Right`, then set the variant to `Neither`.
+    /// If the current variant is `Both`, then set the variant to `Left` and keep the left value.
+    /// Otherwise, do nothing.
+    #[quither((!has_both || has_either) && (!has_either || has_neither))]
+    pub fn clear_right(&mut self) {
+        match self {
+            #[either]
+            Self::Left(_) => (),
+            #[either]
+            Self::Right(_) => {
+                *self = Self::Neither;
+            }
+            #[neither]
+            Self::Neither => (),
+            #[both]
+            Self::Both(_, _) => {
+                replace_with_or_abort(self, move |this| {
+                    let Self::Both(left, _) = this else {
+                        unreachable!()
+                    };
+                    Self::Left(left)
+                });
+            }
+        }
+    }
 }

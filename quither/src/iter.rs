@@ -205,16 +205,20 @@ impl<L, R> Quither<L, R> {
         ))
     }
 
+    /// An iterator that yields Either::Left for all items from the left iterator, then Either::Right for all items from the right iterator.
     #[quither(has_either || has_both)]
-    pub fn either_into_iter(self) -> impl Iterator<Item = Either<L::Item, R::Item>>
+    pub fn either_into_iter(self) -> IterIntoEither<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator,
     {
-        let (left, right) = self.left_and_right();
-        let left_iter = left.into_iter().flatten().map(Either::Left);
-        let right_iter = right.into_iter().flatten().map(Either::Right);
-        left_iter.chain(right_iter)
+        IterIntoEither::new(
+            self.map2(
+                <L as IntoIterator>::into_iter,
+                <R as IntoIterator>::into_iter,
+            )
+            .into(),
+        )
     }
 
     #[deprecated(note = "Use `chain_into_iter` method instead, which has clearer naming")]
@@ -514,4 +518,36 @@ where
     L: Iterator + ExactSizeIterator,
     R: Iterator + ExactSizeIterator,
 {
+}
+
+pub struct IterIntoEither<L, R>(Quither<L, R>);
+
+impl<L, R> IterIntoEither<L, R> {
+    pub fn new(quither: Quither<L, R>) -> Self {
+        Self(quither)
+    }
+}
+
+impl<L, R> Iterator for IterIntoEither<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    type Item = Either<L::Item, R::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(left) = self.0.as_mut().left() {
+            if let Some(item) = left.next() {
+                return Some(Either::Left(item));
+            }
+            self.0.clear_left();
+        }
+        if let Some(right) = self.0.as_mut().right() {
+            if let Some(item) = right.next() {
+                return Some(Either::Right(item));
+            }
+            self.0.clear_right();
+        }
+        None
+    }
 }
