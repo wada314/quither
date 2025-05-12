@@ -204,6 +204,86 @@ impl<L, R> Quither<L, R> {
             <&mut R as IntoIterator>::into_iter,
         ))
     }
+
+    #[quither(has_either || has_both)]
+    pub fn either_into_iter(self) -> impl Iterator<Item = Either<L::Item, R::Item>>
+    where
+        L: IntoIterator,
+        R: IntoIterator,
+    {
+        let (left, right) = self.left_and_right();
+        let left_iter = left.into_iter().flatten().map(Either::Left);
+        let right_iter = right.into_iter().flatten().map(Either::Right);
+        left_iter.chain(right_iter)
+    }
+
+    #[deprecated(note = "Use `chain_into_iter` method instead, which has clearer naming")]
+    #[quither(has_either && !has_both)]
+    pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
+    where
+        L: IntoIterator,
+        R: IntoIterator<Item = L::Item>,
+    {
+        self.chain_into_iter()
+    }
+
+    #[deprecated(note = "Use `chain_into_iter` method instead, which has clearer naming")]
+    #[quither(has_either && has_both)]
+    pub fn into_iter(
+        self,
+    ) -> Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>
+    where
+        L: IntoIterator,
+        R: IntoIterator<Item = L::Item>,
+    {
+        self.chain_into_iter()
+    }
+
+    #[deprecated(note = "Use `chain_iter` method instead, which has clearer naming")]
+    #[quither(has_either && !has_both)]
+    pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+    {
+        self.chain_iter()
+    }
+
+    #[deprecated(note = "Use `chain_iter` method instead, which has clearer naming")]
+    #[quither(has_either && has_both)]
+    pub fn iter(
+        &self,
+    ) -> Chain<Flatten<::core::option::IntoIter<&L>>, Flatten<::core::option::IntoIter<&R>>>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+    {
+        self.chain_iter()
+    }
+
+    #[deprecated(note = "Use `chain_iter_mut` method instead, which has clearer naming")]
+    #[quither(has_either && !has_both)]
+    pub fn iter_mut(
+        &mut self,
+    ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        self.chain_iter_mut()
+    }
+
+    #[deprecated(note = "Use `chain_iter_mut` method instead, which has clearer naming")]
+    #[quither(has_either && has_both)]
+    pub fn iter_mut(
+        &mut self,
+    ) -> Chain<Flatten<::core::option::IntoIter<&mut L>>, Flatten<::core::option::IntoIter<&mut R>>>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        self.chain_iter_mut()
+    }
 }
 
 /// Implements `Iterator` for the enum, yielding items from the underlying iterator(s).
