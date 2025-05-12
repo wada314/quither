@@ -17,15 +17,24 @@ use ::core::iter::FusedIterator;
 use super::*;
 use ::quither_proc_macros::quither;
 
+use ::core::iter::{Chain, Flatten};
+use ::core::option::IntoIter as OptionIntoIter;
+
+mod private {
+    type _Foo1<A, B> = ::core::iter::Chain<A, B>;
+    type _Foo2<A> = ::core::iter::Flatten<A>;
+    type _Foo3<A> = ::core::option::IntoIter<A>;
+}
+
 #[quither]
 impl<L, R> Quither<L, R> {
-    /// Returns a `Quither` of iterators over the inner values.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// Each variant is mapped to its corresponding iterator using `IntoIterator`.
-    /// The returned type is `Quither<L::IntoIter, R::IntoIter>`, where each variant
-    /// contains the iterator for the inner value. The iterator's `Item` type is `L::Item`.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && !has_both)]
-    pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
+    pub fn chain_into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator<Item = L::Item>,
@@ -40,44 +49,34 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Converts the inner value(s) into their corresponding iterators.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// For each variant, returns a `Quither` wrapping the result of `into_iter` on the inner value.
-    /// If the variant is `Both`, both values are converted. The `Neither` variant yields `Quither::Neither`.
-    ///
-    /// # Both variant
-    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
-    /// it yields all items from the left iterator, then from the right.  
-    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
-    /// on the left iterator and checks if it is `None` before proceeding to the right.
-    /// This may result in performance overhead, so using this method with the `Both` variant
-    /// is discouraged for performance-critical code.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && has_both)]
-    pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
+    pub fn chain_into_iter(
+        self,
+    ) -> Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>
     where
         L: IntoIterator,
         R: IntoIterator<Item = L::Item>,
-        L::IntoIter: FusedIterator,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
-        }
+        let (left, right) = self.left_and_right();
+        let left_iter = left.into_iter().flatten();
+        let right_iter = right.into_iter().flatten();
+        left_iter.chain(right_iter)
     }
 
-    /// Returns a `Quither` of iterators over references to the inner values.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// Each variant is mapped to an iterator over references using `IntoIterator`.
-    /// The returned type is `Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>`,
-    /// where each variant contains the iterator for the reference. The iterator's `Item` type is `<&L as IntoIterator>::Item`.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && !has_both)]
-    pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    pub fn chain_iter(
+        &self,
+    ) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
         for<'a> &'a L: IntoIterator,
         for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
@@ -92,45 +91,32 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Returns a `Quither` of iterators over references to the inner values.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// Each variant is mapped to an iterator over references using `IntoIterator`.
-    /// The returned type is `Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>`,
-    /// where each variant contains the iterator for the reference. The iterator's `Item` type is `<&L as IntoIterator>::Item`.
-    ///
-    /// # Both variant
-    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
-    /// it yields all items from the left iterator, then from the right.  
-    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
-    /// on the left iterator and checks if it is `None` before proceeding to the right.
-    /// This may result in performance overhead, so using this method with the `Both` variant
-    /// is discouraged for performance-critical code.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && has_both)]
-    pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    pub fn chain_iter(
+        &self,
+    ) -> Chain<Flatten<::core::option::IntoIter<&L>>, Flatten<::core::option::IntoIter<&R>>>
     where
         for<'a> &'a L: IntoIterator,
         for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
-        for<'a> <&'a L as IntoIterator>::IntoIter: FusedIterator,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
-        }
+        let (left, right) = self.as_ref().left_and_right();
+        let left_iter = left.into_iter().flatten();
+        let right_iter = right.into_iter().flatten();
+        left_iter.chain(right_iter)
     }
 
-    /// Returns a `Quither` of iterators over mutable references to the inner values.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// Each variant is mapped to an iterator over mutable references using `IntoIterator`.
-    /// The returned type is `Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>`,
-    /// where each variant contains the iterator for the mutable reference. The iterator's `Item` type is `<&mut L as IntoIterator>::Item`.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && !has_both)]
-    pub fn iter_mut(
+    pub fn chain_iter_mut(
         &mut self,
     ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
@@ -147,38 +133,23 @@ impl<L, R> Quither<L, R> {
         }
     }
 
-    /// Returns a `Quither` of iterators over mutable references to the inner values.
+    /// Returns an iterator that chains the left and right iterators.
     ///
-    /// Each variant is mapped to an iterator over mutable references using `IntoIterator`.
-    /// The returned type is `Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>`,
-    /// where each variant contains the iterator for the mutable reference. The iterator's `Item` type is `<&mut L as IntoIterator>::Item`.
-    ///
-    /// # Both variant
-    /// For the `Both` variant, this method behaves similarly to [`Iterator::chain`]:
-    /// it yields all items from the left iterator, then from the right.  
-    /// However, unlike `chain`, `Quither` cannot store state, so it always calls `next()`
-    /// on the left iterator and checks if it is `None` before proceeding to the right.
-    /// This may result in performance overhead, so using this method with the `Both` variant
-    /// is discouraged for performance-critical code.
+    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
+    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
+    /// The `Item` type must be the same for both sides.
     #[quither(has_either && has_both)]
-    pub fn iter_mut(
+    pub fn chain_iter_mut(
         &mut self,
-    ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    ) -> Chain<Flatten<::core::option::IntoIter<&mut L>>, Flatten<::core::option::IntoIter<&mut R>>>
     where
         for<'a> &'a mut L: IntoIterator,
         for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
-        for<'a> <&'a mut L as IntoIterator>::IntoIter: FusedIterator,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-            #[both]
-            Self::Both(l, r) => Quither::Both(l.into_iter(), r.into_iter()),
-        }
+        let (left, right) = self.as_mut().left_and_right();
+        let left_iter = left.into_iter().flatten();
+        let right_iter = right.into_iter().flatten();
+        left_iter.chain(right_iter)
     }
 
     /// Returns an iterator that yields an enum value representing items from the left and right iterators.
