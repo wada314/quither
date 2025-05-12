@@ -191,7 +191,7 @@ impl<L, R> Quither<L, R> {
     pub fn factor_into_iter(self) -> IterQuither<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
-        R: IntoIterator<Item = L::Item>,
+        R: IntoIterator,
     {
         IterQuither(self.map2(L::into_iter, R::into_iter))
     }
@@ -207,7 +207,7 @@ impl<L, R> Quither<L, R> {
     ) -> IterQuither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
         for<'a> &'a L: IntoIterator,
-        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+        for<'a> &'a R: IntoIterator,
     {
         IterQuither(self.as_ref().map2(
             <&L as IntoIterator>::into_iter,
@@ -226,7 +226,7 @@ impl<L, R> Quither<L, R> {
     ) -> IterQuither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
         for<'a> &'a mut L: IntoIterator,
-        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+        for<'a> &'a mut R: IntoIterator,
     {
         IterQuither(self.as_mut().map2(
             <&mut L as IntoIterator>::into_iter,
