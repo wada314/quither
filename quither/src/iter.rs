@@ -113,6 +113,11 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates all items from the left iterator, then all items from the right iterator.
+    ///
+    /// The returned iterator's `Item` type is the common item type of both iterators.
+    /// **Left and right iterator item types must be the same.**
+    /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn into_iter_chained(self) -> ChainedIterator<L::IntoIter, R::IntoIter>
     where
@@ -122,6 +127,11 @@ impl<L, R> Quither<L, R> {
         self.map2(L::into_iter, R::into_iter).into()
     }
 
+    /// Iterates all items from the left iterator, then all items from the right iterator by reference.
+    ///
+    /// The returned iterator's `Item` type is the common item type of both reference iterators.
+    /// **Left and right iterator item types must be the same.**
+    /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn iter_chained(
         &self,
@@ -138,6 +148,11 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates all items from the left iterator, then all items from the right iterator by mutable reference.
+    ///
+    /// The returned iterator's `Item` type is the common item type of both mutable reference iterators.
+    /// **Left and right iterator item types must be the same.**
+    /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn iter_chained_mut(
         &mut self,
@@ -154,6 +169,11 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates items from both iterators, wrapping each in `Either::Left` or `Either::Right`.
+    ///
+    /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
+    /// Yields all items from the left iterator as `Left`, then all items from the right iterator
+    ///  as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn into_iter_either(self) -> IterIntoEither<L::IntoIter, R::IntoIter>
     where
@@ -163,6 +183,11 @@ impl<L, R> Quither<L, R> {
         self.map2(L::into_iter, R::into_iter).into()
     }
 
+    /// Iterates items from both iterators by reference, wrapping each in `Either::Left` or `Either::Right`.
+    ///
+    /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
+    /// Yields all items from the left iterator as `Left`, then all items from the right iterator
+    ///  as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn iter_either(
         &self,
@@ -179,6 +204,11 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates items from both iterators by mutable reference, wrapping each in `Either::Left` or `Either::Right`.
+    ///
+    /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
+    /// Yields all items from the left iterator as `Left`, then all items from the right iterator
+    ///  as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
     #[quither(has_either || has_both)]
     pub fn iter_either_mut(
         &mut self,
@@ -195,6 +225,10 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates items from both iterators in parallel, yielding `EitherOrBoth::Both(l, r)` if both have items,
+    /// or `Left(l)`/`Right(r)` if only one side has items left.
+    ///
+    /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn into_iter_either_or_both(self) -> IterIntoEitherOrBoth<L::IntoIter, R::IntoIter>
     where
@@ -204,6 +238,10 @@ impl<L, R> Quither<L, R> {
         self.map2(L::into_iter, R::into_iter).into()
     }
 
+    /// Iterates items from both iterators in parallel by reference, yielding `EitherOrBoth::Both(l, r)` if both have items,
+    /// or `Left(l)`/`Right(r)` if only one side has items left.
+    ///
+    /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both(
         &self,
@@ -220,6 +258,10 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates items from both iterators in parallel by mutable reference, yielding `EitherOrBoth::Both(l, r)` if both have items,
+    /// or `Left(l)`/`Right(r)` if only one side has items left.
+    ///
+    /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both_mut(
         &mut self,
@@ -236,6 +278,9 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates pairs of items from both iterators as long as both have items (like `zip`).
+    ///
+    /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn into_iter_both(self) -> IterIntoBoth<L::IntoIter, R::IntoIter>
     where
@@ -245,6 +290,9 @@ impl<L, R> Quither<L, R> {
         self.map2(L::into_iter, R::into_iter).into()
     }
 
+    /// Iterates pairs of items from both iterators by reference as long as both have items (like `zip`).
+    ///
+    /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn iter_both(
         &self,
@@ -261,6 +309,9 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates pairs of items from both iterators by mutable reference as long as both have items (like `zip`).
+    ///
+    /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
     #[quither(has_either || has_both)]
     pub fn iter_both_mut(
         &mut self,
