@@ -18,7 +18,6 @@ use super::*;
 use ::quither_proc_macros::quither;
 
 use ::core::iter::{Chain, Flatten};
-use ::core::option::IntoIter as OptionIntoIter;
 
 mod private {
     type _Foo1<A, B> = ::core::iter::Chain<A, B>;
@@ -28,140 +27,135 @@ mod private {
 
 #[quither]
 impl<L, R> Quither<L, R> {
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && !has_both)]
-    pub fn chain_into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
+    #[deprecated(note = "This method's intention is unclear. Use `into_iter_chained()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn into_iter(self) -> Either<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator<Item = L::Item>,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-        }
+        self.map2(L::into_iter, R::into_iter)
     }
 
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && has_both)]
-    pub fn chain_into_iter(
-        self,
-    ) -> Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>
+    #[deprecated(note = "This method's intention is unclear. Use `iter_chained()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn iter(&self) -> Either<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+    {
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
+    #[deprecated(note = "This method's intention is unclear. Use `iter_chained_mut()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn iter_mut(
+        &mut self,
+    ) -> Either<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
+    #[deprecated(note = "This method's intention is unclear. Use `into_iter_either()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn factor_into_iter(self) -> IterEither<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator<Item = L::Item>,
     {
-        let (left, right) = self.left_and_right();
-        let left_iter = left.into_iter().flatten();
-        let right_iter = right.into_iter().flatten();
-        left_iter.chain(right_iter)
+        self.map2(L::into_iter, R::into_iter).into()
     }
 
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && !has_both)]
-    pub fn chain_iter(
+    #[deprecated(note = "This method's intention is unclear. Use `iter_chained()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn factor_iter(
         &self,
-    ) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    ) -> IterEither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
         for<'a> &'a L: IntoIterator,
         for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-        }
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && has_both)]
-    pub fn chain_iter(
-        &self,
-    ) -> Chain<Flatten<::core::option::IntoIter<&L>>, Flatten<::core::option::IntoIter<&R>>>
-    where
-        for<'a> &'a L: IntoIterator,
-        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
-    {
-        let (left, right) = self.as_ref().left_and_right();
-        let left_iter = left.into_iter().flatten();
-        let right_iter = right.into_iter().flatten();
-        left_iter.chain(right_iter)
-    }
-
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && !has_both)]
-    pub fn chain_iter_mut(
+    #[deprecated(note = "This method's intention is unclear. Use `into_iter_chained()` instead.")]
+    #[quither(has_either && !has_neither && !has_both)]
+    pub fn factor_iter_mut(
         &mut self,
-    ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    ) -> IterEither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
         for<'a> &'a mut L: IntoIterator,
         for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
     {
-        match self {
-            #[either]
-            Self::Left(l) => Quither::Left(l.into_iter()),
-            #[either]
-            Self::Right(r) => Quither::Right(r.into_iter()),
-            #[neither]
-            Self::Neither => Quither::Neither,
-        }
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
-    /// Returns an iterator that chains the left and right iterators.
-    ///
-    /// Each variant is converted to its corresponding iterator. For the `Both` variant,
-    /// all items from the left iterator are yielded first, followed by all items from the right iterator.
-    /// The `Item` type must be the same for both sides.
-    #[quither(has_either && has_both)]
-    pub fn chain_iter_mut(
-        &mut self,
-    ) -> Chain<Flatten<::core::option::IntoIter<&mut L>>, Flatten<::core::option::IntoIter<&mut R>>>
-    where
-        for<'a> &'a mut L: IntoIterator,
-        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
-    {
-        let (left, right) = self.as_mut().left_and_right();
-        let left_iter = left.into_iter().flatten();
-        let right_iter = right.into_iter().flatten();
-        left_iter.chain(right_iter)
-    }
-
-    /// Returns an iterator that yields an enum value representing items from the left and right iterators.
-    ///
-    /// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
-    /// For example, when iterating over a pair of iterators, the item may be `Both(l, r)` if both have items,
-    /// or `Left(l)`/`Right(r)` if only one side has items left. The set of variants in the yielded item depends on the state of the iterators,
-    /// and may differ from the enum type used to construct this iterator.
     #[quither(has_either || has_both)]
-    pub fn factor_into_iter(
-        self,
-    ) -> IterIntoQuither<L::IntoIter, R::IntoIter, true, false, has_both>
+    pub fn into_iter_chained(self) -> ChainedIterator<L::IntoIter, R::IntoIter>
+    where
+        L: IntoIterator,
+        R: IntoIterator<Item = L::Item>,
+    {
+        self.map2(L::into_iter, R::into_iter).into()
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn iter_chained(
+        &self,
+    ) -> ChainedIterator<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+    {
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn iter_chained_mut(
+        &mut self,
+    ) -> ChainedIterator<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn into_iter_either(self) -> IterIntoEither<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator,
@@ -169,21 +163,10 @@ impl<L, R> Quither<L, R> {
         self.map2(L::into_iter, R::into_iter).into()
     }
 
-    /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by reference.
-    ///
-    /// The returned iterator's `Item` type is an enum supporting `Left`, `Right`, and `Both` variants as needed,
-    /// depending on which underlying iterators still have items. This allows handling cases where the two iterators
-    /// have different lengths.
     #[quither(has_either || has_both)]
-    pub fn factor_iter(
+    pub fn iter_either(
         &self,
-    ) -> IterIntoQuither<
-        <&L as IntoIterator>::IntoIter,
-        <&R as IntoIterator>::IntoIter,
-        true,
-        false,
-        has_both,
-    >
+    ) -> IterIntoEither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
         for<'a> &'a L: IntoIterator,
         for<'a> &'a R: IntoIterator,
@@ -196,21 +179,10 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
-    /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by mutable reference.
-    ///
-    /// The returned iterator's `Item` type is an enum supporting `Left`, `Right`, and `Both` variants as needed,
-    /// depending on which underlying iterators still have items. This allows handling cases where the two iterators
-    /// have different lengths.
     #[quither(has_either || has_both)]
-    pub fn factor_iter_mut(
+    pub fn iter_either_mut(
         &mut self,
-    ) -> IterIntoQuither<
-        <&mut L as IntoIterator>::IntoIter,
-        <&mut R as IntoIterator>::IntoIter,
-        true,
-        false,
-        has_both,
-    >
+    ) -> IterIntoEither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
         for<'a> &'a mut L: IntoIterator,
         for<'a> &'a mut R: IntoIterator,
@@ -223,97 +195,101 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
-    /// An iterator that yields Either::Left for all items from the left iterator, then Either::Right for all items from the right iterator.
     #[quither(has_either || has_both)]
-    pub fn either_into_iter(self) -> IterIntoEither<L::IntoIter, R::IntoIter>
+    pub fn into_iter_either_or_both(self) -> IterIntoEitherOrBoth<L::IntoIter, R::IntoIter>
     where
         L: IntoIterator,
         R: IntoIterator,
     {
-        IterIntoEither::new(
-            self.map2(
-                <L as IntoIterator>::into_iter,
-                <R as IntoIterator>::into_iter,
-            )
-            .into(),
-        )
+        self.map2(L::into_iter, R::into_iter).into()
     }
 
-    #[deprecated(note = "Use `chain_into_iter` method instead, which has clearer naming")]
-    #[quither(has_either && !has_both)]
-    pub fn into_iter(self) -> Quither<L::IntoIter, R::IntoIter>
-    where
-        L: IntoIterator,
-        R: IntoIterator<Item = L::Item>,
-    {
-        self.chain_into_iter()
-    }
-
-    #[deprecated(note = "Use `chain_into_iter` method instead, which has clearer naming")]
-    #[quither(has_either && has_both)]
-    pub fn into_iter(
-        self,
-    ) -> Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>
-    where
-        L: IntoIterator,
-        R: IntoIterator<Item = L::Item>,
-    {
-        self.chain_into_iter()
-    }
-
-    #[deprecated(note = "Use `chain_iter` method instead, which has clearer naming")]
-    #[quither(has_either && !has_both)]
-    pub fn iter(&self) -> Quither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
-    where
-        for<'a> &'a L: IntoIterator,
-        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
-    {
-        self.chain_iter()
-    }
-
-    #[deprecated(note = "Use `chain_iter` method instead, which has clearer naming")]
-    #[quither(has_either && has_both)]
-    pub fn iter(
+    #[quither(has_either || has_both)]
+    pub fn iter_either_or_both(
         &self,
-    ) -> Chain<Flatten<::core::option::IntoIter<&L>>, Flatten<::core::option::IntoIter<&R>>>
+    ) -> IterIntoEitherOrBoth<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
     where
         for<'a> &'a L: IntoIterator,
-        for<'a> &'a R: IntoIterator<Item = <&'a L as IntoIterator>::Item>,
+        for<'a> &'a R: IntoIterator,
     {
-        self.chain_iter()
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
-    #[deprecated(note = "Use `chain_iter_mut` method instead, which has clearer naming")]
-    #[quither(has_either && !has_both)]
-    pub fn iter_mut(
+    #[quither(has_either || has_both)]
+    pub fn iter_either_or_both_mut(
         &mut self,
-    ) -> Quither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    ) -> IterIntoEitherOrBoth<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
         for<'a> &'a mut L: IntoIterator,
-        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+        for<'a> &'a mut R: IntoIterator,
     {
-        self.chain_iter_mut()
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
-    #[deprecated(note = "Use `chain_iter_mut` method instead, which has clearer naming")]
-    #[quither(has_either && has_both)]
-    pub fn iter_mut(
+    #[quither(has_either || has_both)]
+    pub fn into_iter_both(self) -> IterIntoBoth<L::IntoIter, R::IntoIter>
+    where
+        L: IntoIterator,
+        R: IntoIterator,
+    {
+        self.map2(L::into_iter, R::into_iter).into()
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn iter_both(
+        &self,
+    ) -> IterIntoBoth<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a L: IntoIterator,
+        for<'a> &'a R: IntoIterator,
+    {
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
+    #[quither(has_either || has_both)]
+    pub fn iter_both_mut(
         &mut self,
-    ) -> Chain<Flatten<::core::option::IntoIter<&mut L>>, Flatten<::core::option::IntoIter<&mut R>>>
+    ) -> IterIntoBoth<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
     where
         for<'a> &'a mut L: IntoIterator,
-        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+        for<'a> &'a mut R: IntoIterator,
     {
-        self.chain_iter_mut()
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 }
 
-/// Implements `Iterator` for the enum, yielding items from the underlying iterator(s).
+/// `Iterator` implementation for the `Either` type that has the same item type iterators.
 ///
-/// The `Item` type is the same as the item type of the left iterator. For each variant, yields items from the corresponding iterator.
-/// For the `Neither` variant, always yields `None`.
-#[quither(has_either && !has_both)]
-impl<L, R> Iterator for Quither<L, R>
+/// This trait implementation is provided for compatibility with `itertools`.
+/// It is not recommended to use this trait implementation in new code,
+/// because the definition of `Iterator` for `Either` is confusing --
+/// should the item type be the common type of the two iterators,
+/// or should it be the left & right (maybe different) item types wrapped in the `Either` enum?
+///
+/// This implementation works to return the item type of the common type of the two iterators,
+/// but if you want that behavior, we recommend using the `.iter_chained()`-like methods and
+/// `ChainedIterator` instead.
+impl<L, R> Iterator for Either<L, R>
 where
     L: Iterator,
     R: Iterator<Item = L::Item>,
@@ -322,136 +298,48 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            #[either]
             Self::Left(l) => l.next(),
-            #[either]
             Self::Right(r) => r.next(),
-            #[neither]
-            Self::Neither => None,
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self {
-            #[either]
             Self::Left(l) => l.size_hint(),
-            #[either]
             Self::Right(r) => r.size_hint(),
-            #[neither]
-            Self::Neither => (0, Some(0)),
         }
     }
 }
 
-/// Implements `Iterator` for the enum, yielding items from the underlying iterator(s).
-///
-/// The `Item` type is the same as the item type of the left iterator. For the `Both` variant, yields all items from the left iterator first;
-/// once the left iterator is exhausted, yields items from the right iterator. This is similar to `Iterator::chain`,
-/// but always calls `next()` on the left iterator and checks for `None` on each call, which may have performance implications.
-#[quither(has_both)]
-impl<L, R> Iterator for Quither<L, R>
-where
-    L: Iterator + FusedIterator,
-    R: Iterator<Item = L::Item>,
-{
-    type Item = L::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            #[either]
-            Self::Left(l) => l.next(),
-            #[either]
-            Self::Right(r) => r.next(),
-            #[neither]
-            Self::Neither => None,
-            #[both]
-            Self::Both(l, r) => l.next().or_else(|| r.next()),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            #[either]
-            Self::Left(l) => l.size_hint(),
-            #[either]
-            Self::Right(r) => r.size_hint(),
-            #[neither]
-            Self::Neither => (0, Some(0)),
-            #[both]
-            Self::Both(l, r) => {
-                let (l_lower, l_upper) = l.size_hint();
-                let (r_lower, r_upper) = r.size_hint();
-                (
-                    usize::saturating_add(l_lower, r_lower),
-                    l_upper.and_then(|l_upper| {
-                        r_upper.and_then(|r_upper| usize::checked_add(l_upper, r_upper))
-                    }),
-                )
-            }
-        }
-    }
-}
-
-#[quither(has_either || has_both)]
-impl<L, R> FusedIterator for Quither<L, R>
+impl<L, R> FusedIterator for Either<L, R>
 where
     L: Iterator + FusedIterator,
     R: Iterator<Item = L::Item> + FusedIterator,
 {
 }
 
-#[quither(has_either && !has_both)]
-impl<L, R> ExactSizeIterator for Quither<L, R>
+impl<L, R> ExactSizeIterator for Either<L, R>
 where
     L: Iterator + ExactSizeIterator,
     R: Iterator<Item = L::Item> + ExactSizeIterator,
 {
     fn len(&self) -> usize {
         match self {
-            #[either]
             Self::Left(l) => l.len(),
-            #[either]
             Self::Right(r) => r.len(),
-            #[neither]
-            Self::Neither => 0,
         }
     }
 }
 
-#[quither(has_either && !has_both)]
-impl<L, R> DoubleEndedIterator for Quither<L, R>
+impl<L, R> DoubleEndedIterator for Either<L, R>
 where
     L: Iterator + DoubleEndedIterator,
     R: Iterator<Item = L::Item> + DoubleEndedIterator,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {
-            #[either]
             Self::Left(l) => l.next_back(),
-            #[either]
             Self::Right(r) => r.next_back(),
-            #[neither]
-            Self::Neither => None,
-        }
-    }
-}
-
-#[quither(has_both)]
-impl<L, R> DoubleEndedIterator for Quither<L, R>
-where
-    L: Iterator + FusedIterator + DoubleEndedIterator,
-    R: Iterator<Item = L::Item> + FusedIterator + DoubleEndedIterator,
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        match self {
-            #[either]
-            Self::Left(l) => l.next_back(),
-            #[either]
-            Self::Right(r) => r.next_back(),
-            #[neither]
-            Self::Neither => None,
-            #[both]
-            Self::Both(l, r) => r.next_back().or_else(|| l.next_back()),
         }
     }
 }
@@ -461,6 +349,9 @@ pub struct IterIntoEither<L, R>(Quither<L, R>)
 where
     L: Iterator,
     R: Iterator;
+
+/// An alias for `IterIntoEither` for compatibility with `itertools`.
+pub type IterEither<L, R> = IterIntoEither<L, R>;
 
 #[quither(has_either || has_both)]
 impl<L, R> Into<IterIntoEither<L, R>> for Quither<L, R>
