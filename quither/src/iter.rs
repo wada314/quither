@@ -497,8 +497,22 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // TODO: return the (saturated) sum of the two sizes
-        todo!()
+        let left = self
+            .0
+            .as_ref()
+            .left()
+            .map_or((0, Some(0)), |l| l.size_hint());
+        let right = self
+            .0
+            .as_ref()
+            .right()
+            .map_or((0, Some(0)), |r| r.size_hint());
+        let lower = left.0.saturating_add(right.0);
+        let upper = match (left.1, right.1) {
+            (Some(l), Some(r)) => l.checked_add(r),
+            _ => None,
+        };
+        (lower, upper)
     }
 }
 
@@ -638,9 +652,9 @@ where
             return None;
         };
         match both {
-            Both::Both(l, r) => {
-                if let (Some(left), Some(right)) = (l.next(), r.next()) {
-                    Some(Both::Both(left, right))
+            Both::Both(left, right) => {
+                if let (Some(left_item), Some(right_item)) = (left.next(), right.next()) {
+                    Some(Both::Both(left_item, right_item))
                 } else {
                     None
                 }
@@ -649,8 +663,18 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // TODO: return the minimum of the two sizes
-        todo!()
+        let Some(Both::Both(left, right)) = self.0.as_ref() else {
+            return (0, Some(0));
+        };
+        let (left_lower, left_upper) = left.size_hint();
+        let (right_lower, right_upper) = right.size_hint();
+        (
+            usize::min(left_lower, right_lower),
+            match (left_upper, right_upper) {
+                (Some(lu), Some(ru)) => Some(usize::min(lu, ru)),
+                _ => None,
+            },
+        )
     }
 }
 
