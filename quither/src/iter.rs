@@ -159,12 +159,14 @@ impl<L, R> Quither<L, R> {
     /// or `Left(l)`/`Right(r)` if only one side has items left. The set of variants in the yielded item depends on the state of the iterators,
     /// and may differ from the enum type used to construct this iterator.
     #[quither(has_either || has_both)]
-    pub fn factor_into_iter(self) -> IterQuither<L::IntoIter, R::IntoIter>
+    pub fn factor_into_iter(
+        self,
+    ) -> IterIntoQuither<L::IntoIter, R::IntoIter, true, false, has_both>
     where
         L: IntoIterator,
         R: IntoIterator,
     {
-        IterQuither(self.map2(L::into_iter, R::into_iter))
+        self.map2(L::into_iter, R::into_iter).into()
     }
 
     /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by reference.
@@ -175,15 +177,23 @@ impl<L, R> Quither<L, R> {
     #[quither(has_either || has_both)]
     pub fn factor_iter(
         &self,
-    ) -> IterQuither<<&L as IntoIterator>::IntoIter, <&R as IntoIterator>::IntoIter>
+    ) -> IterIntoQuither<
+        <&L as IntoIterator>::IntoIter,
+        <&R as IntoIterator>::IntoIter,
+        true,
+        false,
+        has_both,
+    >
     where
         for<'a> &'a L: IntoIterator,
         for<'a> &'a R: IntoIterator,
     {
-        IterQuither(self.as_ref().map2(
-            <&L as IntoIterator>::into_iter,
-            <&R as IntoIterator>::into_iter,
-        ))
+        self.as_ref()
+            .map2(
+                <&L as IntoIterator>::into_iter,
+                <&R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
     /// Returns an iterator that yields an enum value for each pair of items from the left and right iterators by mutable reference.
@@ -194,15 +204,23 @@ impl<L, R> Quither<L, R> {
     #[quither(has_either || has_both)]
     pub fn factor_iter_mut(
         &mut self,
-    ) -> IterQuither<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    ) -> IterIntoQuither<
+        <&mut L as IntoIterator>::IntoIter,
+        <&mut R as IntoIterator>::IntoIter,
+        true,
+        false,
+        has_both,
+    >
     where
         for<'a> &'a mut L: IntoIterator,
         for<'a> &'a mut R: IntoIterator,
     {
-        IterQuither(self.as_mut().map2(
-            <&mut L as IntoIterator>::into_iter,
-            <&mut R as IntoIterator>::into_iter,
-        ))
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
     }
 
     /// An iterator that yields Either::Left for all items from the left iterator, then Either::Right for all items from the right iterator.
@@ -438,93 +456,18 @@ where
     }
 }
 
-/// An iterator that yields an enum value representing items from the left and right iterators.
-///
-/// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
-/// For example, when iterating over a pair of iterators, the item may be `Both(l, r)` if both have items,
-/// or `Left(l)`/`Right(r)` if only one side has items left. The set of variants in the yielded item depends on the state of the iterators,
-/// and may differ from the enum type used to construct this iterator.
-#[quither(has_either || has_both)]
-#[derive(Debug, Clone)]
-pub struct IterQuither<L, R>(Quither<L, R>);
-
-/// Returns the next item from the underlying iterators, wrapped in one of the variants.
-///
-/// The `Item` type of this iterator is an enum whose variants correspond to the possible states of the underlying iterators.
-/// For example, when iterating a pair of iterators, this iterator yields `Both(l, r)` while both iterators yield items,
-/// then `Left(l)` or `Right(r)` if only one side has items left. This allows handling cases where the two iterators have different lengths.
-#[quither(has_either || has_both)]
-impl<L, R> Iterator for IterQuither<L, R>
-where
-    L: Iterator,
-    R: Iterator,
-{
-    type Item = Quither<L::Item, R::Item, { has_either || has_both }, has_neither, has_both>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.0 {
-            #[either]
-            Quither::Left(l) => l.next().map(Self::Item::Left),
-            #[either]
-            Quither::Right(r) => r.next().map(Self::Item::Right),
-            #[neither]
-            Quither::Neither => None,
-            #[both]
-            Quither::Both(l, r) => match (l.next(), r.next()) {
-                (Some(l), Some(r)) => Some(Self::Item::Both(l, r)),
-                (Some(l), None) => Some(Self::Item::Left(l)),
-                (None, Some(r)) => Some(Self::Item::Right(r)),
-                (None, None) => None,
-            },
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match &self.0 {
-            #[either]
-            Quither::Left(l) => l.size_hint(),
-            #[either]
-            Quither::Right(r) => r.size_hint(),
-            #[neither]
-            Quither::Neither => (0, Some(0)),
-            #[both]
-            Quither::Both(l, r) => {
-                let (l_lower, l_upper) = l.size_hint();
-                let (r_lower, r_upper) = r.size_hint();
-                (
-                    usize::min(l_lower, r_lower),
-                    if let (Some(l_upper), Some(r_upper)) = (l_upper, r_upper) {
-                        Some(usize::max(l_upper, r_upper))
-                    } else {
-                        None
-                    },
-                )
-            }
-        }
-    }
-}
-
-#[quither(has_either || has_both)]
-impl<L, R> FusedIterator for IterQuither<L, R>
-where
-    L: Iterator + FusedIterator,
-    R: Iterator + FusedIterator,
-{
-}
-
-#[quither(has_either || has_both)]
-impl<L, R> ExactSizeIterator for IterQuither<L, R>
-where
-    L: Iterator + ExactSizeIterator,
-    R: Iterator + ExactSizeIterator,
-{
-}
-
 pub struct IterIntoEither<L, R>(Quither<L, R>);
 
 impl<L, R> IterIntoEither<L, R> {
     pub fn new(quither: Quither<L, R>) -> Self {
         Self(quither)
+    }
+}
+
+#[quither(has_either || has_both)]
+impl<L, R> Into<IterIntoEither<L, R>> for Quither<L, R> {
+    fn into(self) -> IterIntoEither<L, R> {
+        IterIntoEither::new(self.into())
     }
 }
 
@@ -550,4 +493,109 @@ where
         }
         None
     }
+}
+
+impl<L, R> FusedIterator for IterIntoEither<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator + FusedIterator,
+{
+}
+
+impl<L, R> ExactSizeIterator for IterIntoEither<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator + ExactSizeIterator,
+{
+}
+
+impl<L, R> DoubleEndedIterator for IterIntoEither<L, R>
+where
+    L: Iterator + DoubleEndedIterator,
+    R: Iterator + DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if let Some(right) = self.0.as_mut().right() {
+            if let Some(item) = right.next_back() {
+                return Some(Either::Right(item));
+            }
+            self.0.clear_right();
+        }
+        if let Some(left) = self.0.as_mut().left() {
+            if let Some(item) = left.next_back() {
+                return Some(Either::Left(item));
+            }
+            self.0.clear_left();
+        }
+        None
+    }
+}
+
+pub struct IterIntoEitherOrBoth<L, R>(Quither<L, R>);
+
+impl<L, R> IterIntoEitherOrBoth<L, R> {
+    pub fn new(quither: Quither<L, R>) -> Self {
+        Self(quither)
+    }
+}
+
+#[quither(has_either || has_both)]
+impl<L, R> Into<IterIntoEitherOrBoth<L, R>> for Quither<L, R> {
+    fn into(self) -> IterIntoEitherOrBoth<L, R> {
+        IterIntoEitherOrBoth::new(self.into())
+    }
+}
+
+impl<L, R> Iterator for IterIntoEitherOrBoth<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    type Item = EitherOrBoth<L::Item, R::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut result = Quither::Neither;
+        if let Some(left) = self.0.as_mut().left() {
+            if let Some(item) = left.next() {
+                result.insert_left(item);
+            } else {
+                self.0.clear_left();
+            }
+        }
+        if let Some(right) = self.0.as_mut().right() {
+            if let Some(item) = right.next() {
+                result.insert_right(item);
+            } else {
+                self.0.clear_right();
+            }
+        }
+        result.factor_neither()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let left_size = self.0.as_ref().left().map_or((0, None), |l| l.size_hint());
+        let right_size = self.0.as_ref().right().map_or((0, None), |r| r.size_hint());
+        (
+            usize::max(left_size.0, right_size.0),
+            left_size.1.and_then(|left_max| {
+                right_size
+                    .1
+                    .and_then(|right_max| Some(usize::max(left_max, right_max)))
+            }),
+        )
+    }
+}
+
+impl<L, R> FusedIterator for IterIntoEitherOrBoth<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator + FusedIterator,
+{
+}
+
+impl<L, R> ExactSizeIterator for IterIntoEitherOrBoth<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator + ExactSizeIterator,
+{
 }
