@@ -354,13 +354,13 @@ where
 pub type IterEither<L, R> = IterIntoEither<L, R>;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<IterIntoEither<L, R>> for Quither<L, R>
+impl<L, R> From<Quither<L, R>> for IterIntoEither<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn into(self) -> IterIntoEither<L, R> {
-        IterIntoEither(self.into())
+    fn from(q: Quither<L, R>) -> Self {
+        IterIntoEither(q.into())
     }
 }
 
@@ -450,13 +450,13 @@ where
     R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<IterIntoEitherOrBoth<L, R>> for Quither<L, R>
+impl<L, R> From<Quither<L, R>> for IterIntoEitherOrBoth<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn into(self) -> IterIntoEitherOrBoth<L, R> {
-        IterIntoEitherOrBoth(self.into())
+    fn from(q: Quither<L, R>) -> Self {
+        IterIntoEitherOrBoth(q.into())
     }
 }
 
@@ -521,13 +521,13 @@ where
     R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<IterIntoBoth<L, R>> for Quither<L, R>
+impl<L, R> From<Quither<L, R>> for IterIntoBoth<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn into(self) -> IterIntoBoth<L, R> {
-        IterIntoBoth(self.both().map(|(l, r)| Both::Both(l, r)))
+    fn from(q: Quither<L, R>) -> Self {
+        IterIntoBoth(q.both().map(|(l, r)| Both::Both(l, r)))
     }
 }
 
@@ -592,13 +592,13 @@ where
     R: Iterator<Item = L::Item>;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<ChainedIterator<L, R>> for Quither<L, R>
+impl<L, R> From<Quither<L, R>> for ChainedIterator<L, R>
 where
     L: Iterator,
     R: Iterator<Item = L::Item>,
 {
-    fn into(self) -> ChainedIterator<L, R> {
-        let (left, right) = self.left_and_right();
+    fn from(q: Quither<L, R>) -> Self {
+        let (left, right) = q.left_and_right();
         ChainedIterator(
             left.into_iter()
                 .flatten()
