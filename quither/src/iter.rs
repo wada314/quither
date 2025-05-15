@@ -495,6 +495,11 @@ where
         }
         None
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // TODO: return the (saturated) sum of the two sizes
+        todo!()
+    }
 }
 
 impl<L, R> FusedIterator for IterIntoEither<L, R>
@@ -605,6 +610,65 @@ where
 }
 
 #[derive(Debug, Clone)]
+pub struct IterIntoBoth<L, R>(Option<Both<L, R>>)
+where
+    L: Iterator,
+    R: Iterator;
+
+#[quither(has_either || has_both)]
+impl<L, R> Into<IterIntoBoth<L, R>> for Quither<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    fn into(self) -> IterIntoBoth<L, R> {
+        IterIntoBoth(self.both().map(|(l, r)| Both::Both(l, r)))
+    }
+}
+
+impl<L, R> Iterator for IterIntoBoth<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    type Item = Both<L::Item, R::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(both) = &mut self.0 else {
+            return None;
+        };
+        match both {
+            Both::Both(l, r) => {
+                if let (Some(left), Some(right)) = (l.next(), r.next()) {
+                    Some(Both::Both(left, right))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // TODO: return the minimum of the two sizes
+        todo!()
+    }
+}
+
+impl<L, R> FusedIterator for IterIntoBoth<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator + FusedIterator,
+{
+}
+
+impl<L, R> ExactSizeIterator for IterIntoBoth<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator + ExactSizeIterator,
+{
+}
+
+#[derive(Debug, Clone)]
 pub struct ChainedIterator<L, R>(
     Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>,
 )
@@ -638,19 +702,16 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 impl<L, R> FusedIterator for ChainedIterator<L, R>
 where
     L: Iterator + FusedIterator,
     R: Iterator<Item = L::Item> + FusedIterator,
-{
-}
-
-impl<L, R> ExactSizeIterator for ChainedIterator<L, R>
-where
-    L: Iterator + ExactSizeIterator,
-    R: Iterator<Item = L::Item> + ExactSizeIterator,
 {
 }
 
