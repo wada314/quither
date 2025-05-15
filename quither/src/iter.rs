@@ -19,12 +19,6 @@ use ::quither_proc_macros::quither;
 
 use ::core::iter::{Chain, Flatten};
 
-mod private {
-    type _Foo1<A, B> = ::core::iter::Chain<A, B>;
-    type _Foo2<A> = ::core::iter::Flatten<A>;
-    type _Foo3<A> = ::core::option::IntoIter<A>;
-}
-
 #[quither]
 impl<L, R> Quither<L, R> {
     #[deprecated(note = "This method's intention is unclear. Use `into_iter_chained()` instead.")]
