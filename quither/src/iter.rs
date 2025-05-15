@@ -456,18 +456,20 @@ where
     }
 }
 
-pub struct IterIntoEither<L, R>(Quither<L, R>);
-
-impl<L, R> IterIntoEither<L, R> {
-    pub fn new(quither: Quither<L, R>) -> Self {
-        Self(quither)
-    }
-}
+#[derive(Debug, Clone)]
+pub struct IterIntoEither<L, R>(Quither<L, R>)
+where
+    L: Iterator,
+    R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<IterIntoEither<L, R>> for Quither<L, R> {
+impl<L, R> Into<IterIntoEither<L, R>> for Quither<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
     fn into(self) -> IterIntoEither<L, R> {
-        IterIntoEither::new(self.into())
+        IterIntoEither(self.into())
     }
 }
 
@@ -531,18 +533,20 @@ where
     }
 }
 
-pub struct IterIntoEitherOrBoth<L, R>(Quither<L, R>);
-
-impl<L, R> IterIntoEitherOrBoth<L, R> {
-    pub fn new(quither: Quither<L, R>) -> Self {
-        Self(quither)
-    }
-}
+#[derive(Debug, Clone)]
+pub struct IterIntoEitherOrBoth<L, R>(Quither<L, R>)
+where
+    L: Iterator,
+    R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> Into<IterIntoEitherOrBoth<L, R>> for Quither<L, R> {
+impl<L, R> Into<IterIntoEitherOrBoth<L, R>> for Quither<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
     fn into(self) -> IterIntoEitherOrBoth<L, R> {
-        IterIntoEitherOrBoth::new(self.into())
+        IterIntoEitherOrBoth(self.into())
     }
 }
 
@@ -598,4 +602,64 @@ where
     L: Iterator + ExactSizeIterator,
     R: Iterator + ExactSizeIterator,
 {
+}
+
+#[derive(Debug, Clone)]
+pub struct ChainedIterator<L, R>(
+    Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>,
+)
+where
+    L: Iterator,
+    R: Iterator<Item = L::Item>;
+
+#[quither(has_either || has_both)]
+impl<L, R> Into<ChainedIterator<L, R>> for Quither<L, R>
+where
+    L: Iterator,
+    R: Iterator<Item = L::Item>,
+{
+    fn into(self) -> ChainedIterator<L, R> {
+        let (left, right) = self.left_and_right();
+        ChainedIterator(
+            left.into_iter()
+                .flatten()
+                .chain(right.into_iter().flatten()),
+        )
+    }
+}
+
+impl<L, R> Iterator for ChainedIterator<L, R>
+where
+    L: Iterator,
+    R: Iterator<Item = L::Item>,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+impl<L, R> FusedIterator for ChainedIterator<L, R>
+where
+    L: Iterator + FusedIterator,
+    R: Iterator<Item = L::Item> + FusedIterator,
+{
+}
+
+impl<L, R> ExactSizeIterator for ChainedIterator<L, R>
+where
+    L: Iterator + ExactSizeIterator,
+    R: Iterator<Item = L::Item> + ExactSizeIterator,
+{
+}
+
+impl<L, R> DoubleEndedIterator for ChainedIterator<L, R>
+where
+    L: Iterator + DoubleEndedIterator,
+    R: Iterator<Item = L::Item> + DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
 }
