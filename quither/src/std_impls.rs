@@ -293,3 +293,66 @@ where
         }
     }
 }
+
+#[quither]
+impl<L, R, OL, OR> PartialEq<Quither<OL, OR>> for Quither<L, R>
+where
+    L: PartialEq<OL>,
+    R: PartialEq<OR>,
+{
+    fn eq(&self, other: &Quither<OL, OR>) -> bool {
+        match (self, other) {
+            #[either]
+            (Self::Left(l), Quither::Left(ol)) => l == ol,
+            #[either]
+            (Self::Right(r), Quither::Right(or)) => r == or,
+            #[neither]
+            (Self::Neither, Quither::Neither) => true,
+            #[both]
+            (Self::Both(l, r), Quither::Both(ol, or)) => l == ol && r == or,
+            #[allow(unreachable_patterns)]
+            _ => false,
+        }
+    }
+}
+
+#[quither]
+impl<L, R, OL, OR> PartialOrd<Quither<OL, OR>> for Quither<L, R>
+where
+    L: PartialOrd<OL>,
+    R: PartialOrd<OR>,
+{
+    fn partial_cmp(&self, other: &Quither<OL, OR>) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            #[either]
+            (Self::Left(l), Quither::Left(ol)) => l.partial_cmp(ol),
+            #[either]
+            (Self::Right(r), Quither::Right(or)) => r.partial_cmp(or),
+            #[neither]
+            (Self::Neither, Quither::Neither) => Some(std::cmp::Ordering::Equal),
+            #[both]
+            (Self::Both(l, r), Quither::Both(ol, or)) => l
+                .partial_cmp(ol)
+                .and_then(|o| r.partial_cmp(or).map(|o2| o.cmp(&o2))),
+            // Non-equal variants patterns
+            #[neither]
+            #[allow(unreachable_patterns)]
+            (Self::Neither, _) => Some(std::cmp::Ordering::Less),
+            #[neither]
+            #[allow(unreachable_patterns)]
+            (_, Quither::Neither) => Some(std::cmp::Ordering::Greater),
+            #[either]
+            #[allow(unreachable_patterns)]
+            (Self::Left(_), _) => Some(std::cmp::Ordering::Less),
+            #[either]
+            #[allow(unreachable_patterns)]
+            (_, Quither::Left(_)) => Some(std::cmp::Ordering::Greater),
+            #[either]
+            #[allow(unreachable_patterns)]
+            (Self::Right(_), _) => Some(std::cmp::Ordering::Less),
+            #[either]
+            #[allow(unreachable_patterns)]
+            (_, Quither::Right(_)) => Some(std::cmp::Ordering::Greater),
+        }
+    }
+}
