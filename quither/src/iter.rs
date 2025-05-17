@@ -688,3 +688,59 @@ where
         self.0.next_back()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chained_iterators() {
+        let q = Quither::Both(vec![0, 1], vec![2, 3, 4]);
+        let v: Vec<_> = q.clone().into_iter_chained().collect();
+        assert_eq!(v, vec![0, 1, 2, 3, 4]);
+
+        let v: Vec<_> = q.iter_chained().cloned().collect();
+        assert_eq!(v, vec![0, 1, 2, 3, 4]);
+
+        let mut q2 = q.clone();
+        let v: Vec<_> = q2.iter_chained_mut().map(|x| *x).collect();
+        assert_eq!(v, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_either_iterators() {
+        let mut q2 = Quither::Both(vec![0, 1], vec![2, 3, 4]);
+        let v: Vec<Either<&mut i32, &mut i32>> = q2.iter_either_mut().collect();
+        assert_eq!(
+            v,
+            vec![
+                Either::Left(&0),
+                Either::Left(&1),
+                Either::Right(&2),
+                Either::Right(&3),
+                Either::Right(&4)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_either_or_both_iterators() {
+        let mut q2 = Quither::Both(vec![0, 1], vec![2, 3, 4]);
+        let v: Vec<EitherOrBoth<&mut i32, &mut i32>> = q2.iter_either_or_both_mut().collect();
+        assert_eq!(
+            v,
+            vec![
+                EitherOrBoth::Both(&0, &2),
+                EitherOrBoth::Both(&1, &3),
+                EitherOrBoth::Right(&4),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_both_iterators() {
+        let mut q2 = Quither::Both(vec![0, 1], vec![2, 3, 4]);
+        let v: Vec<Both<&mut i32, &mut i32>> = q2.iter_both_mut().collect();
+        assert_eq!(v, vec![Both::Both(&0, &2), Both::Both(&1, &3)]);
+    }
+}
