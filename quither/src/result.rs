@@ -83,6 +83,9 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
     }
 }
 
+/// Iterator type returned by [`ResultExt::transpose_iter`].
+///
+/// For detailed usage examples, please refer to the method documentation.
 #[derive(Debug, Clone)]
 pub struct Iter<T, E>
 where
