@@ -39,7 +39,7 @@ mod getters;
 mod into;
 pub mod iter;
 mod map;
-mod result;
+pub mod result;
 mod std_impls;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.

@@ -18,9 +18,12 @@ use ::std::iter::{Once, once};
 /// Extension trait for `Result` that provides methods for working with iterators.
 ///
 /// This trait adds functionality to transpose a `Result` containing an iterator
-/// into an iterator of `Result`s. This is particularly useful when you have a
-/// `Result<Vec<T>, E>` and want to process each element while preserving any
-/// potential errors.
+/// into an iterator of `Result`s. This conversion can be done with a cheap
+/// runtime cost (which we don't need to `collect` internally).
+///
+/// Just for your information, the vice versa conversion
+/// (from `impl Iterator<Item = Result<T, E>>` to `Result<impl Iterator<Item = T>, E>`)
+/// needs `collect`, which is not cheap.
 ///
 /// # Examples
 ///
@@ -80,6 +83,7 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Iter<T, E>
 where
     T: IntoIterator,
@@ -97,6 +101,32 @@ where
         match &mut self.inner {
             Either::Left(it) => it.next().map(Ok),
             Either::Right(it) => it.next(),
+        }
+    }
+}
+
+impl<T, E> DoubleEndedIterator for Iter<T, E>
+where
+    T: IntoIterator,
+    T::IntoIter: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            Either::Left(it) => it.next_back().map(Ok),
+            Either::Right(it) => it.next_back(),
+        }
+    }
+}
+
+impl<T, E> ExactSizeIterator for Iter<T, E>
+where
+    T: IntoIterator,
+    T::IntoIter: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        match &self.inner {
+            Either::Left(it) => it.len(),
+            Either::Right(_) => 1,
         }
     }
 }
