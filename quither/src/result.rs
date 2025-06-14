@@ -25,7 +25,7 @@ use ::std::iter::{Once, once};
 /// # Examples
 ///
 /// ```
-/// use quither::result::ResultExt;
+/// use quither::ResultExt;
 ///
 /// let result: Result<Vec<i32>, &str> = Ok(vec![1, 2, 3]);
 /// let mut iter = result.transpose_iter();
@@ -50,7 +50,7 @@ pub trait ResultExt<T, E> {
     /// # Examples
     ///
     /// ```
-    /// use quither::result::ResultExt;
+    /// use quither::ResultExt;
     ///
     /// let result: Result<Vec<i32>, &str> = Ok(vec![1, 2, 3]);
     /// let sum: Result<i32, &str> = result.transpose_iter()
