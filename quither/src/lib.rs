@@ -39,6 +39,7 @@ mod getters;
 mod into;
 pub mod iter;
 mod map;
+pub mod result;
 mod std_impls;
 
 // Pair types, essentially comibinations of `Either`, `Neither`, and `Both`.
@@ -102,3 +103,5 @@ impl<T> Either<T, T> {
         }
     }
 }
+
+pub use result::ResultExt;
