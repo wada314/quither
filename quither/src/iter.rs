@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::core::iter::FusedIterator;
+use core::iter::FusedIterator;
 
 use super::*;
-use ::quither_proc_macros::quither;
+use quither_proc_macros::quither;
 
-use ::core::iter::{Chain, Flatten};
+use core::iter::{Chain, Flatten};
 
 #[quither]
 impl<L, R> Quither<L, R> {
@@ -512,15 +512,28 @@ impl<L, R> Quither<L, R> {
 
 /// `Iterator` implementation for the `Either` type that has the same item type iterators.
 ///
-/// This trait implementation is provided for compatibility with `itertools`.
-/// It is not recommended to use this trait implementation in new code,
-/// because the definition of `Iterator` for `Either` is confusing --
+/// This trait implementation is provided for compatibility with `itertools` crate.
+/// It is not recommended to use this trait implementation in new code.
+///
+/// The definition of `Iterator` for `Either` is confusing --
 /// should the item type be the common type of the two iterators,
 /// or should it be the left & right (maybe different) item types wrapped in the `Either` enum?
-///
 /// This implementation works to return the item type of the common type of the two iterators,
 /// but if you want that behavior, we recommend using the `.iter_chained()`-like methods and
 /// `ChainedIterator` instead.
+///
+/// # Sample
+///
+/// ```rust
+/// use quither::Either;
+///
+/// let mut iter: Either<_, std::iter::Empty<_>> = Either::Left(vec![1, 2, 3].into_iter());
+///
+/// assert_eq!(iter.next(), Some(1));
+/// assert_eq!(iter.next(), Some(2));
+/// assert_eq!(iter.next(), Some(3));
+/// assert_eq!(iter.next(), None);
+/// ```
 impl<L, R> Iterator for Either<L, R>
 where
     L: Iterator,
