@@ -336,7 +336,7 @@ impl<L, R> Quither<L, R> {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// Note: If the value is not `::Both`, this method behaves similarly to [`into_iter_either()`].
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`into_iter_either()`](Self::into_iter_either).
     #[quither(has_either || has_both)]
     pub fn into_iter_either_or_both(self) -> IterIntoEitherOrBoth<L::IntoIter, R::IntoIter>
     where
@@ -365,7 +365,7 @@ impl<L, R> Quither<L, R> {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either()`].
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either()`](Self::iter_either).
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both(
         &self,
@@ -401,7 +401,7 @@ impl<L, R> Quither<L, R> {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either_mut()`].
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either_mut()`](Self::iter_either_mut).
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both_mut(
         &mut self,
@@ -589,6 +589,9 @@ where
     }
 }
 
+/// Iterator that yields items from both iterators, wrapping each in `Either::Left` or `Either::Right`.
+///
+/// Created by `into_iter_either()`, `iter_either()`, or `iter_either_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoEither<L, R>(Quither<L, R>)
 where
@@ -688,6 +691,10 @@ where
     }
 }
 
+/// Iterator that yields items from both iterators in parallel, yielding `EitherOrBoth::Both(l, r)` if both have items,
+/// or `Left(l)`/`Right(r)` if only one side has items left.
+///
+/// Created by `into_iter_either_or_both()`, `iter_either_or_both()`, or `iter_either_or_both_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoEitherOrBoth<L, R>(Quither<L, R>)
 where
@@ -759,6 +766,9 @@ where
 {
 }
 
+/// Iterator that yields pairs of items from both iterators as long as both have items (like [`zip`](std::iter::Iterator::zip)).
+///
+/// Created by `into_iter_both()`, `iter_both()`, or `iter_both_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoBoth<L, R>(Option<Both<L, R>>)
 where
@@ -828,6 +838,9 @@ where
 {
 }
 
+/// Iterator that yields all items from the left iterator, then all items from the right iterator.
+///
+/// Created by `into_iter_chained()`, `iter_chained()`, or `iter_chained_mut()`.
 #[derive(Debug, Clone)]
 pub struct ChainedIterator<L, R>(
     Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>,
