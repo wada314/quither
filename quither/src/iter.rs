@@ -174,6 +174,27 @@ impl<L, R> Quither<L, R> {
             .into()
     }
 
+    /// Iterates all items from the left iterator, then all items from the right iterator by mutable reference.
+    ///
+    /// The returned iterator's `Item` type is the common item type of both mutable reference iterators.
+    /// **Left and right iterator item types must be the same.**
+    /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
+    #[quither(has_either || has_both)]
+    pub fn iter_chained_mut(
+        &mut self,
+    ) -> ChainedIterator<<&mut L as IntoIterator>::IntoIter, <&mut R as IntoIterator>::IntoIter>
+    where
+        for<'a> &'a mut L: IntoIterator,
+        for<'a> &'a mut R: IntoIterator<Item = <&'a mut L as IntoIterator>::Item>,
+    {
+        self.as_mut()
+            .map2(
+                <&mut L as IntoIterator>::into_iter,
+                <&mut R as IntoIterator>::into_iter,
+            )
+            .into()
+    }
+
     /// Iterates items from both iterators, wrapping each in `Either::Left` or `Either::Right`.
     ///
     /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
