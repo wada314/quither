@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::core::iter::FusedIterator;
+use core::iter::FusedIterator;
 
 use super::*;
-use ::quither_proc_macros::quither;
+use quither_proc_macros::quither;
 
-use ::core::iter::{Chain, Flatten};
+use core::iter::{Chain, Flatten};
 
 #[quither]
 impl<L, R> Quither<L, R> {
@@ -112,6 +112,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is the common item type of both iterators.
     /// **Left and right iterator item types must be the same.**
     /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::Quither;
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec![4, 5]);
+    /// let mut iter = q.into_iter_chained();
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn into_iter_chained(self) -> ChainedIterator<L::IntoIter, R::IntoIter>
     where
@@ -126,6 +142,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is the common item type of both reference iterators.
     /// **Left and right iterator item types must be the same.**
     /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::Quither;
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec![4, 5]);
+    /// let mut iter = q.iter_chained();
+    ///
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.next(), Some(&4));
+    /// assert_eq!(iter.next(), Some(&5));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_chained(
         &self,
@@ -147,6 +179,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is the common item type of both mutable reference iterators.
     /// **Left and right iterator item types must be the same.**
     /// Yields all items from the left, then all from the right (like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::Quither;
+    ///
+    /// let mut q = Quither::Both(vec![1, 2, 3], vec![4, 5]);
+    /// let mut iter = q.iter_chained_mut();
+    ///
+    /// assert_eq!(iter.next(), Some(&mut 1));
+    /// assert_eq!(iter.next(), Some(&mut 2));
+    /// assert_eq!(iter.next(), Some(&mut 3));
+    /// assert_eq!(iter.next(), Some(&mut 4));
+    /// assert_eq!(iter.next(), Some(&mut 5));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_chained_mut(
         &mut self,
@@ -168,6 +216,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
     /// Yields all items from the left iterator as `Left`, then all items from the right iterator
     /// as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Either, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.into_iter_either();
+    ///
+    /// assert_eq!(iter.next(), Some(Either::Left(1)));
+    /// assert_eq!(iter.next(), Some(Either::Left(2)));
+    /// assert_eq!(iter.next(), Some(Either::Left(3)));
+    /// assert_eq!(iter.next(), Some(Either::Right('a')));
+    /// assert_eq!(iter.next(), Some(Either::Right('b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn into_iter_either(self) -> IterIntoEither<L::IntoIter, R::IntoIter>
     where
@@ -183,6 +247,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
     /// Yields all items from the left iterator as `Left`, then all items from the right iterator
     /// as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Either, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_either();
+    ///
+    /// assert_eq!(iter.next(), Some(Either::Left(&1)));
+    /// assert_eq!(iter.next(), Some(Either::Left(&2)));
+    /// assert_eq!(iter.next(), Some(Either::Left(&3)));
+    /// assert_eq!(iter.next(), Some(Either::Right(&'a')));
+    /// assert_eq!(iter.next(), Some(Either::Right(&'b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_either(
         &self,
@@ -205,6 +285,22 @@ impl<L, R> Quither<L, R> {
     /// The returned iterator's `Item` type is `Either<L::Item, R::Item>`.
     /// Yields all items from the left iterator as `Left`, then all items from the right iterator
     /// as `Right` (in order, like [`chain`](std::iter::Iterator::chain)).
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Either, Quither};
+    ///
+    /// let mut q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_either_mut();
+    ///
+    /// assert_eq!(iter.next(), Some(Either::Left(&mut 1)));
+    /// assert_eq!(iter.next(), Some(Either::Left(&mut 2)));
+    /// assert_eq!(iter.next(), Some(Either::Left(&mut 3)));
+    /// assert_eq!(iter.next(), Some(Either::Right(&mut 'a')));
+    /// assert_eq!(iter.next(), Some(Either::Right(&mut 'b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_either_mut(
         &mut self,
@@ -225,6 +321,22 @@ impl<L, R> Quither<L, R> {
     /// or `Left(l)`/`Right(r)` if only one side has items left.
     ///
     /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{EitherOrBoth, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.into_iter_either_or_both();
+    ///
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(1, 'a')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(2, 'b')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Left(3)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`into_iter_either()`](Self::into_iter_either).
     #[quither(has_either || has_both)]
     pub fn into_iter_either_or_both(self) -> IterIntoEitherOrBoth<L::IntoIter, R::IntoIter>
     where
@@ -238,6 +350,22 @@ impl<L, R> Quither<L, R> {
     /// if both have items, or `Left(l)`/`Right(r)` if only one side has items left.
     ///
     /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{EitherOrBoth, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_either_or_both();
+    ///
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(&1, &'a')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(&2, &'b')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Left(&3)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either()`](Self::iter_either).
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both(
         &self,
@@ -258,6 +386,22 @@ impl<L, R> Quither<L, R> {
     /// if both have items, or `Left(l)`/`Right(r)` if only one side has items left.
     ///
     /// The returned iterator's `Item` type is `EitherOrBoth<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{EitherOrBoth, Quither};
+    ///
+    /// let mut q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_either_or_both_mut();
+    ///
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(&mut 1, &mut 'a')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Both(&mut 2, &mut 'b')));
+    /// assert_eq!(iter.next(), Some(EitherOrBoth::Left(&mut 3)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Note: If the value is not `::Both`, this method behaves similarly to [`iter_either_mut()`](Self::iter_either_mut).
     #[quither(has_either || has_both)]
     pub fn iter_either_or_both_mut(
         &mut self,
@@ -277,6 +421,19 @@ impl<L, R> Quither<L, R> {
     /// Iterates pairs of items from both iterators as long as both have items (like [`zip`](std::iter::Iterator::zip)).
     ///
     /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Both, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.into_iter_both();
+    ///
+    /// assert_eq!(iter.next(), Some(Both::Both(1, 'a')));
+    /// assert_eq!(iter.next(), Some(Both::Both(2, 'b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn into_iter_both(self) -> IterIntoBoth<L::IntoIter, R::IntoIter>
     where
@@ -290,6 +447,19 @@ impl<L, R> Quither<L, R> {
     /// (like [`zip`](std::iter::Iterator::zip)).
     ///
     /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Both, Quither};
+    ///
+    /// let q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_both();
+    ///
+    /// assert_eq!(iter.next(), Some(Both::Both(&1, &'a')));
+    /// assert_eq!(iter.next(), Some(Both::Both(&2, &'b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_both(
         &self,
@@ -310,6 +480,19 @@ impl<L, R> Quither<L, R> {
     /// (like [`zip`](std::iter::Iterator::zip)).
     ///
     /// The returned iterator's `Item` type is `Both<L::Item, R::Item>`.
+    ///
+    /// # Sample
+    ///
+    /// ```rust
+    /// use quither::{Both, Quither};
+    ///
+    /// let mut q = Quither::Both(vec![1, 2, 3], vec!['a', 'b']);
+    /// let mut iter = q.iter_both_mut();
+    ///
+    /// assert_eq!(iter.next(), Some(Both::Both(&mut 1, &mut 'a')));
+    /// assert_eq!(iter.next(), Some(Both::Both(&mut 2, &mut 'b')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[quither(has_either || has_both)]
     pub fn iter_both_mut(
         &mut self,
@@ -329,15 +512,28 @@ impl<L, R> Quither<L, R> {
 
 /// `Iterator` implementation for the `Either` type that has the same item type iterators.
 ///
-/// This trait implementation is provided for compatibility with `itertools`.
-/// It is not recommended to use this trait implementation in new code,
-/// because the definition of `Iterator` for `Either` is confusing --
+/// This trait implementation is provided for compatibility with `itertools` crate.
+/// It is not recommended to use this trait implementation in new code.
+///
+/// The definition of `Iterator` for `Either` is confusing --
 /// should the item type be the common type of the two iterators,
 /// or should it be the left & right (maybe different) item types wrapped in the `Either` enum?
-///
 /// This implementation works to return the item type of the common type of the two iterators,
 /// but if you want that behavior, we recommend using the `.iter_chained()`-like methods and
 /// `ChainedIterator` instead.
+///
+/// # Sample
+///
+/// ```rust
+/// use quither::Either;
+///
+/// let mut iter: Either<_, std::iter::Empty<_>> = Either::Left(vec![1, 2, 3].into_iter());
+///
+/// assert_eq!(iter.next(), Some(1));
+/// assert_eq!(iter.next(), Some(2));
+/// assert_eq!(iter.next(), Some(3));
+/// assert_eq!(iter.next(), None);
+/// ```
 impl<L, R> Iterator for Either<L, R>
 where
     L: Iterator,
@@ -393,6 +589,9 @@ where
     }
 }
 
+/// Iterator that yields items from both iterators, wrapping each in `Either::Left` or `Either::Right`.
+///
+/// Created by `into_iter_either()`, `iter_either()`, or `iter_either_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoEither<L, R>(Quither<L, R>)
 where
@@ -492,6 +691,10 @@ where
     }
 }
 
+/// Iterator that yields items from both iterators in parallel, yielding `EitherOrBoth::Both(l, r)` if both have items,
+/// or `Left(l)`/`Right(r)` if only one side has items left.
+///
+/// Created by `into_iter_either_or_both()`, `iter_either_or_both()`, or `iter_either_or_both_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoEitherOrBoth<L, R>(Quither<L, R>)
 where
@@ -563,6 +766,9 @@ where
 {
 }
 
+/// Iterator that yields pairs of items from both iterators as long as both have items (like [`zip`](std::iter::Iterator::zip)).
+///
+/// Created by `into_iter_both()`, `iter_both()`, or `iter_both_mut()`.
 #[derive(Debug, Clone)]
 pub struct IterIntoBoth<L, R>(Option<Both<L, R>>)
 where
@@ -632,6 +838,9 @@ where
 {
 }
 
+/// Iterator that yields all items from the left iterator, then all items from the right iterator.
+///
+/// Created by `into_iter_chained()`, `iter_chained()`, or `iter_chained_mut()`.
 #[derive(Debug, Clone)]
 pub struct ChainedIterator<L, R>(
     Chain<Flatten<::core::option::IntoIter<L>>, Flatten<::core::option::IntoIter<R>>>,
