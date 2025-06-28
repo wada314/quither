@@ -6,18 +6,20 @@ A flexible enum-based utility for representing values that may be on the left, r
 - Provides a generic enum type supporting `Left`, `Right`, `Neither`, and `Both` variants
   - Supports arbitrary combinations of `Either`, `Both`, and `Neither`.
 - Iterator and standard trait support
+  - More and clearer iterator types than `itertools`'s `Either` and `EitherOrBoth` types.
 - (Supposed to) have compatible interfaces with `itertools`'s `Either` and `EitherOrBoth` types.
 - No-std compatible, can be build without `std` features.
 
 ## Example
 ```rust
-use quither::{Quither, NeitherOrBoth};
+use quither::{Quither, NeitherOrBoth, EitherOrBoth};
 
 // You can create values with any combination of variants:
-let left = Quither::Left(1);
-let right = Quither::Right(2);
-let both = Quither::Both(1, 2);
-let neither = Quither::Neither;
+let left: Quither<i32, i32> = Quither::Left(1);
+let right: Quither<i32, i32> = Quither::Right(2);
+let both: Quither<i32, i32> = Quither::Both(1, 2);
+let neither: Quither<i32, i32> = Quither::Neither;
+let left2: EitherOrBoth<i32, i32> = EitherOrBoth::Left(1);
 
 // Pattern matching on Quither
 match both {
