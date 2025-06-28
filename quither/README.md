@@ -12,13 +12,14 @@ A flexible enum-based utility for representing values that may be on the left, r
 
 ## Example
 ```rust
-use quither::{Quither, NeitherOrBoth};
+use quither::{Quither, NeitherOrBoth, EitherOrBoth};
 
 // You can create values with any combination of variants:
 let left: Quither<i32, i32> = Quither::Left(1);
 let right: Quither<i32, i32> = Quither::Right(2);
 let both: Quither<i32, i32> = Quither::Both(1, 2);
 let neither: Quither<i32, i32> = Quither::Neither;
+let left2: EitherOrBoth<i32, i32> = EitherOrBoth::Left(1);
 
 // Pattern matching on Quither
 match both {
