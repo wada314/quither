@@ -26,43 +26,43 @@ impl<L, R> From<Result<R, L>> for Either<L, R> {
 
 /// Promotes a type without `Both` variant to a type with `Both` variant.
 #[quither(has_both && (has_either || has_neither))]
-impl<L, R> From<Quither<L, R, has_either, has_neither, false>> for Quither<L, R> {
-    fn from(quither: Quither<L, R, has_either, has_neither, false>) -> Self {
+impl<L, R> From<Xither<L, R, has_either, has_neither, false>> for Xither<L, R> {
+    fn from(quither: Xither<L, R, has_either, has_neither, false>) -> Self {
         match quither {
             #[either]
-            Quither::<L, R, has_either, has_neither, false>::Left(l) => Quither::Left(l),
+            Xither::<L, R, has_either, has_neither, false>::Left(l) => Xither::Left(l),
             #[either]
-            Quither::<L, R, has_either, has_neither, false>::Right(r) => Quither::Right(r),
+            Xither::<L, R, has_either, has_neither, false>::Right(r) => Xither::Right(r),
             #[neither]
-            Quither::<L, R, has_either, has_neither, false>::Neither => Quither::Neither,
+            Xither::<L, R, has_either, has_neither, false>::Neither => Xither::Neither,
         }
     }
 }
 
 /// Promotes a type without `Either` variant to a type with `Either` variant.
 #[quither(has_either && (has_neither || has_both))]
-impl<L, R> From<Quither<L, R, false, has_neither, has_both>> for Quither<L, R> {
-    fn from(quither: Quither<L, R, false, has_neither, has_both>) -> Self {
+impl<L, R> From<Xither<L, R, false, has_neither, has_both>> for Xither<L, R> {
+    fn from(quither: Xither<L, R, false, has_neither, has_both>) -> Self {
         match quither {
             #[neither]
-            Quither::<L, R, false, has_neither, has_both>::Neither => Quither::Neither,
+            Xither::<L, R, false, has_neither, has_both>::Neither => Xither::Neither,
             #[both]
-            Quither::<L, R, false, has_neither, has_both>::Both(l, r) => Quither::Both(l, r),
+            Xither::<L, R, false, has_neither, has_both>::Both(l, r) => Xither::Both(l, r),
         }
     }
 }
 
 /// Promotes a type without `Neither` variant to a type with `Neither` variant.
 #[quither(has_neither && (has_either || has_both))]
-impl<L, R> From<Quither<L, R, has_either, false, has_both>> for Quither<L, R> {
-    fn from(quither: Quither<L, R, has_either, false, has_both>) -> Self {
+impl<L, R> From<Xither<L, R, has_either, false, has_both>> for Xither<L, R> {
+    fn from(quither: Xither<L, R, has_either, false, has_both>) -> Self {
         match quither {
             #[either]
-            Quither::<L, R, has_either, false, has_both>::Left(l) => Quither::Left(l),
+            Xither::<L, R, has_either, false, has_both>::Left(l) => Xither::Left(l),
             #[either]
-            Quither::<L, R, has_either, false, has_both>::Right(r) => Quither::Right(r),
+            Xither::<L, R, has_either, false, has_both>::Right(r) => Xither::Right(r),
             #[both]
-            Quither::<L, R, has_either, false, has_both>::Both(l, r) => Quither::Both(l, r),
+            Xither::<L, R, has_either, false, has_both>::Both(l, r) => Xither::Both(l, r),
         }
     }
 }
@@ -95,98 +95,96 @@ impl<L, R> From<Both<L, R>> for Quither<L, R> {
 
 /// Demotes a type with `Either` variant to a type without `Either` variant.
 #[quither(!has_either)]
-impl<L, R> TryFrom<Quither<L, R, true, has_neither, has_both>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, true, has_neither, has_both>> for Xither<L, R> {
     type Error = Either<L, R>;
-    fn try_from(quither: Quither<L, R, true, has_neither, has_both>) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, true, has_neither, has_both>) -> Result<Self, Self::Error> {
         match quither {
-            Quither::<L, R, true, has_neither, has_both>::Left(l) => Err(Either::Left(l)),
-            Quither::<L, R, true, has_neither, has_both>::Right(r) => Err(Either::Right(r)),
+            Xither::<L, R, true, has_neither, has_both>::Left(l) => Err(Either::Left(l)),
+            Xither::<L, R, true, has_neither, has_both>::Right(r) => Err(Either::Right(r)),
             #[neither]
-            Quither::<L, R, true, has_neither, has_both>::Neither => Ok(Quither::Neither),
+            Xither::<L, R, true, has_neither, has_both>::Neither => Ok(Xither::Neither),
             #[both]
-            Quither::<L, R, true, has_neither, has_both>::Both(l, r) => Ok(Quither::Both(l, r)),
+            Xither::<L, R, true, has_neither, has_both>::Both(l, r) => Ok(Xither::Both(l, r)),
         }
     }
 }
 
 /// Demotes a type with `Neither` variant to a type without `Neither` variant.
 #[quither(!has_neither)]
-impl<L, R> TryFrom<Quither<L, R, has_either, true, has_both>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, has_either, true, has_both>> for Xither<L, R> {
     type Error = Neither;
-    fn try_from(quither: Quither<L, R, has_either, true, has_both>) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, has_either, true, has_both>) -> Result<Self, Self::Error> {
         match quither {
             #[either]
-            Quither::<L, R, has_either, true, has_both>::Left(l) => Ok(Quither::Left(l)),
+            Xither::<L, R, has_either, true, has_both>::Left(l) => Ok(Xither::Left(l)),
             #[either]
-            Quither::<L, R, has_either, true, has_both>::Right(r) => Ok(Quither::Right(r)),
-            Quither::<L, R, has_either, true, has_both>::Neither => Err(Neither::Neither),
+            Xither::<L, R, has_either, true, has_both>::Right(r) => Ok(Xither::Right(r)),
+            Xither::<L, R, has_either, true, has_both>::Neither => Err(Neither::Neither),
             #[both]
-            Quither::<L, R, has_either, true, has_both>::Both(l, r) => Ok(Quither::Both(l, r)),
+            Xither::<L, R, has_either, true, has_both>::Both(l, r) => Ok(Xither::Both(l, r)),
         }
     }
 }
 
 /// Demotes a type with `Both` variant to a type without `Both` variant.
 #[quither(!has_both)]
-impl<L, R> TryFrom<Quither<L, R, has_either, has_neither, true>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, has_either, has_neither, true>> for Xither<L, R> {
     type Error = Both<L, R>;
-    fn try_from(
-        quither: Quither<L, R, has_either, has_neither, true>,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, has_either, has_neither, true>) -> Result<Self, Self::Error> {
         match quither {
             #[either]
-            Quither::<L, R, has_either, has_neither, true>::Left(l) => Ok(Quither::Left(l)),
+            Xither::<L, R, has_either, has_neither, true>::Left(l) => Ok(Xither::Left(l)),
             #[either]
-            Quither::<L, R, has_either, has_neither, true>::Right(r) => Ok(Quither::Right(r)),
+            Xither::<L, R, has_either, has_neither, true>::Right(r) => Ok(Xither::Right(r)),
             #[neither]
-            Quither::<L, R, has_either, has_neither, true>::Neither => Ok(Quither::Neither),
-            Quither::<L, R, has_either, has_neither, true>::Both(l, r) => Err(Both::Both(l, r)),
+            Xither::<L, R, has_either, has_neither, true>::Neither => Ok(Xither::Neither),
+            Xither::<L, R, has_either, has_neither, true>::Both(l, r) => Err(Both::Both(l, r)),
         }
     }
 }
 
 /// Demotes a type with `Either` and `Neither` variants to a type without those variants.
 #[quither(!has_either && !has_neither)]
-impl<L, R> TryFrom<Quither<L, R, true, true, has_both>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, true, true, has_both>> for Xither<L, R> {
     type Error = EitherOrNeither<L, R>;
-    fn try_from(quither: Quither<L, R, true, true, has_both>) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, true, true, has_both>) -> Result<Self, Self::Error> {
         match quither {
-            Quither::<L, R, true, true, has_both>::Left(l) => Err(EitherOrNeither::Left(l)),
-            Quither::<L, R, true, true, has_both>::Right(r) => Err(EitherOrNeither::Right(r)),
-            Quither::<L, R, true, true, has_both>::Neither => Err(EitherOrNeither::Neither),
+            Xither::<L, R, true, true, has_both>::Left(l) => Err(EitherOrNeither::Left(l)),
+            Xither::<L, R, true, true, has_both>::Right(r) => Err(EitherOrNeither::Right(r)),
+            Xither::<L, R, true, true, has_both>::Neither => Err(EitherOrNeither::Neither),
             #[both]
-            Quither::<L, R, true, true, has_both>::Both(l, r) => Ok(Quither::Both(l, r)),
+            Xither::<L, R, true, true, has_both>::Both(l, r) => Ok(Xither::Both(l, r)),
         }
     }
 }
 
 /// Demotes a type with `Either` and `Both` variants to a type without those variants.
 #[quither(!has_either && !has_both)]
-impl<L, R> TryFrom<Quither<L, R, true, has_neither, true>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, true, has_neither, true>> for Xither<L, R> {
     type Error = EitherOrBoth<L, R>;
-    fn try_from(quither: Quither<L, R, true, has_neither, true>) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, true, has_neither, true>) -> Result<Self, Self::Error> {
         match quither {
-            Quither::<L, R, true, has_neither, true>::Left(l) => Err(EitherOrBoth::Left(l)),
-            Quither::<L, R, true, has_neither, true>::Right(r) => Err(EitherOrBoth::Right(r)),
+            Xither::<L, R, true, has_neither, true>::Left(l) => Err(EitherOrBoth::Left(l)),
+            Xither::<L, R, true, has_neither, true>::Right(r) => Err(EitherOrBoth::Right(r)),
             #[neither]
-            Quither::<L, R, true, has_neither, true>::Neither => Ok(Quither::Neither),
-            Quither::<L, R, true, has_neither, true>::Both(l, r) => Err(EitherOrBoth::Both(l, r)),
+            Xither::<L, R, true, has_neither, true>::Neither => Ok(Xither::Neither),
+            Xither::<L, R, true, has_neither, true>::Both(l, r) => Err(EitherOrBoth::Both(l, r)),
         }
     }
 }
 
 /// Demotes a type with `Either` and `Neither` variants to a type without those variants.
 #[quither(!has_neither && !has_both)]
-impl<L, R> TryFrom<Quither<L, R, has_either, true, true>> for Quither<L, R> {
+impl<L, R> TryFrom<Xither<L, R, has_either, true, true>> for Xither<L, R> {
     type Error = NeitherOrBoth<L, R>;
-    fn try_from(quither: Quither<L, R, has_either, true, true>) -> Result<Self, Self::Error> {
+    fn try_from(quither: Xither<L, R, has_either, true, true>) -> Result<Self, Self::Error> {
         match quither {
             #[either]
-            Quither::<L, R, has_either, true, true>::Left(l) => Ok(Quither::Left(l)),
+            Xither::<L, R, has_either, true, true>::Left(l) => Ok(Xither::Left(l)),
             #[either]
-            Quither::<L, R, has_either, true, true>::Right(r) => Ok(Quither::Right(r)),
-            Quither::<L, R, has_either, true, true>::Neither => Err(NeitherOrBoth::Neither),
-            Quither::<L, R, has_either, true, true>::Both(l, r) => Err(NeitherOrBoth::Both(l, r)),
+            Xither::<L, R, has_either, true, true>::Right(r) => Ok(Xither::Right(r)),
+            Xither::<L, R, has_either, true, true>::Neither => Err(NeitherOrBoth::Neither),
+            Xither::<L, R, has_either, true, true>::Both(l, r) => Err(NeitherOrBoth::Both(l, r)),
         }
     }
 }

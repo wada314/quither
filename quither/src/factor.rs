@@ -16,7 +16,7 @@ use super::*;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Factor out the `Neither` variant out from the type, converting the type into
     /// `Option<NewType>>`, where `NewType` is the type of the type excluding the `Neither` variant.
     ///
@@ -24,22 +24,22 @@ impl<L, R> Quither<L, R> {
     /// Converts the value into an Option of a type that does not include the Neither variant. Returns
     /// None if the value is Neither; otherwise, returns Some with the corresponding variant.
     #[quither(has_neither && (has_either || has_both))]
-    pub fn factor_neither(self) -> Option<Quither<L, R, has_either, false, has_both>> {
+    pub fn factor_neither(self) -> Option<Xither<L, R, has_either, false, has_both>> {
         match self {
             #[either]
-            Self::Left(l) => Some(Quither::<L, R, has_either, false, has_both>::Left(l)),
+            Self::Left(l) => Some(Xither::<L, R, has_either, false, has_both>::Left(l)),
             #[either]
-            Self::Right(r) => Some(Quither::<L, R, has_either, false, has_both>::Right(r)),
+            Self::Right(r) => Some(Xither::<L, R, has_either, false, has_both>::Right(r)),
             #[neither]
             Self::Neither => None,
             #[both]
-            Self::Both(l, r) => Some(Quither::<L, R, has_either, false, has_both>::Both(l, r)),
+            Self::Both(l, r) => Some(Xither::<L, R, has_either, false, has_both>::Both(l, r)),
         }
     }
 }
 
 #[quither]
-impl<L, R> Quither<Option<L>, Option<R>> {
+impl<L, R> Xither<Option<L>, Option<R>> {
     /// Factors out None values from a pair of Options, returning None if both are None.
     ///
     /// For types of pairs of Option, this method returns an Option of a pair type without Option.
@@ -48,20 +48,20 @@ impl<L, R> Quither<Option<L>, Option<R>> {
     /// variants present. See also the note about Both types returning EitherOrBoth.
     pub fn factor_none(
         self,
-    ) -> Option<Quither<L, R, { has_both || has_either }, has_neither, has_both>> {
+    ) -> Option<Xither<L, R, { has_both || has_either }, has_neither, has_both>> {
         #[allow(unused)]
-        type Quither2<L, R> = Quither<L, R, { has_both || has_either }, has_neither, has_both>;
+        type Xither2<L, R> = Xither<L, R, { has_both || has_either }, has_neither, has_both>;
         match self {
             #[either]
-            Self::Left(Some(l)) => Some(Quither2::Left(l)),
+            Self::Left(Some(l)) => Some(Xither2::Left(l)),
             #[either]
-            Self::Right(Some(r)) => Some(Quither2::Right(r)),
+            Self::Right(Some(r)) => Some(Xither2::Right(r)),
             #[both]
-            Self::Both(Some(l), Some(r)) => Some(Quither2::Both(l, r)),
+            Self::Both(Some(l), Some(r)) => Some(Xither2::Both(l, r)),
             #[both]
-            Self::Both(Some(l), None) => Some(Quither2::Left(l)),
+            Self::Both(Some(l), None) => Some(Xither2::Left(l)),
             #[both]
-            Self::Both(None, Some(r)) => Some(Quither2::Right(r)),
+            Self::Both(None, Some(r)) => Some(Xither2::Right(r)),
             _ => None,
         }
     }

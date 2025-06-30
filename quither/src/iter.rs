@@ -20,7 +20,7 @@ use quither_proc_macros::quither;
 use core::iter::{Chain, Flatten};
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     #[deprecated(note = "This method's intention is unclear. Use `into_iter_chained()` instead.")]
     #[quither(has_either && !has_neither && !has_both)]
     pub fn into_iter(self) -> Either<L::IntoIter, R::IntoIter>
@@ -602,12 +602,12 @@ where
 pub type IterEither<L, R> = IterIntoEither<L, R>;
 
 #[quither(has_either || has_both)]
-impl<L, R> From<Quither<L, R>> for IterIntoEither<L, R>
+impl<L, R> From<Xither<L, R>> for IterIntoEither<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn from(q: Quither<L, R>) -> Self {
+    fn from(q: Xither<L, R>) -> Self {
         IterIntoEither(q.into())
     }
 }
@@ -702,12 +702,12 @@ where
     R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> From<Quither<L, R>> for IterIntoEitherOrBoth<L, R>
+impl<L, R> From<Xither<L, R>> for IterIntoEitherOrBoth<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn from(q: Quither<L, R>) -> Self {
+    fn from(q: Xither<L, R>) -> Self {
         IterIntoEitherOrBoth(q.into())
     }
 }
@@ -776,12 +776,12 @@ where
     R: Iterator;
 
 #[quither(has_either || has_both)]
-impl<L, R> From<Quither<L, R>> for IterIntoBoth<L, R>
+impl<L, R> From<Xither<L, R>> for IterIntoBoth<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    fn from(q: Quither<L, R>) -> Self {
+    fn from(q: Xither<L, R>) -> Self {
         IterIntoBoth(q.both().map(|(l, r)| Both::Both(l, r)))
     }
 }
@@ -850,12 +850,12 @@ where
     R: Iterator<Item = L::Item>;
 
 #[quither(has_either || has_both)]
-impl<L, R> From<Quither<L, R>> for ChainedIterator<L, R>
+impl<L, R> From<Xither<L, R>> for ChainedIterator<L, R>
 where
     L: Iterator,
     R: Iterator<Item = L::Item>,
 {
-    fn from(q: Quither<L, R>) -> Self {
+    fn from(q: Xither<L, R>) -> Self {
         let (left, right) = q.left_and_right();
         ChainedIterator(
             left.into_iter()

@@ -25,40 +25,40 @@ use ::std::ffi::OsStr;
 use ::std::path::Path;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Creates a new variant with references to the contained values.
     #[quither(has_either || has_neither || has_both)]
-    pub fn as_ref(&self) -> Quither<&L, &R> {
+    pub fn as_ref(&self) -> Xither<&L, &R> {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l),
+            Self::Left(l) => Xither::Left(l),
             #[either]
-            Self::Right(r) => Quither::Right(r),
+            Self::Right(r) => Xither::Right(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l, r),
+            Self::Both(l, r) => Xither::Both(l, r),
         }
     }
 
     /// Creates a new variant with mutable references to the contained values.
     #[quither(has_either || has_neither || has_both)]
-    pub fn as_mut(&mut self) -> Quither<&mut L, &mut R> {
+    pub fn as_mut(&mut self) -> Xither<&mut L, &mut R> {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l),
+            Self::Left(l) => Xither::Left(l),
             #[either]
-            Self::Right(r) => Quither::Right(r),
+            Self::Right(r) => Xither::Right(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l, r),
+            Self::Both(l, r) => Xither::Both(l, r),
         }
     }
 
     /// Creates a new pinned variant with references to the contained values.
     #[quither(has_either || has_neither || has_both)]
-    pub fn as_pin_ref(self: Pin<&Self>) -> Quither<Pin<&L>, Pin<&R>> {
+    pub fn as_pin_ref(self: Pin<&Self>) -> Xither<Pin<&L>, Pin<&R>> {
         // SAFETY: This is safe because:
         // 1. We never move the inner values - we only create a new reference to them
         // 2. The original Pin<&Self> guarantees that the original data won't move
@@ -68,20 +68,20 @@ impl<L, R> Quither<L, R> {
         unsafe {
             match self.get_ref() {
                 #[either]
-                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
+                Self::Left(l) => Xither::Left(Pin::new_unchecked(l)),
                 #[either]
-                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
+                Self::Right(r) => Xither::Right(Pin::new_unchecked(r)),
                 #[neither]
-                Self::Neither => Quither::Neither,
+                Self::Neither => Xither::Neither,
                 #[both]
-                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                Self::Both(l, r) => Xither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
             }
         }
     }
 
     /// Creates a new pinned variant with mutable references to the contained values.
     #[quither(has_either || has_neither || has_both)]
-    pub fn as_pin_mut(self: Pin<&mut Self>) -> Quither<Pin<&mut L>, Pin<&mut R>> {
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Xither<Pin<&mut L>, Pin<&mut R>> {
         // SAFETY: This is safe because:
         // 1. We never move the inner values out of the pin
         // 2. We're creating new Pin instances from references to pinned data
@@ -91,52 +91,52 @@ impl<L, R> Quither<L, R> {
         unsafe {
             match self.get_unchecked_mut() {
                 #[either]
-                Self::Left(l) => Quither::Left(Pin::new_unchecked(l)),
+                Self::Left(l) => Xither::Left(Pin::new_unchecked(l)),
                 #[either]
-                Self::Right(r) => Quither::Right(Pin::new_unchecked(r)),
+                Self::Right(r) => Xither::Right(Pin::new_unchecked(r)),
                 #[neither]
-                Self::Neither => Quither::Neither,
+                Self::Neither => Xither::Neither,
                 #[both]
-                Self::Both(l, r) => Quither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
+                Self::Both(l, r) => Xither::Both(Pin::new_unchecked(l), Pin::new_unchecked(r)),
             }
         }
     }
 
     /// Returns a new value using the `Deref` trait for `L` and `R` values.
     #[quither(has_either || has_both)]
-    pub fn as_deref(&self) -> Quither<&L::Target, &R::Target>
+    pub fn as_deref(&self) -> Xither<&L::Target, &R::Target>
     where
         L: Deref,
         R: Deref,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l.deref()),
+            Self::Left(l) => Xither::Left(l.deref()),
             #[either]
-            Self::Right(r) => Quither::Right(r.deref()),
+            Self::Right(r) => Xither::Right(r.deref()),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l.deref(), r.deref()),
+            Self::Both(l, r) => Xither::Both(l.deref(), r.deref()),
         }
     }
 
     /// Returns a new value using the `DerefMut` trait for `L` and `R` values.
     #[quither(has_either || has_both)]
-    pub fn as_deref_mut(&mut self) -> Quither<&mut L::Target, &mut R::Target>
+    pub fn as_deref_mut(&mut self) -> Xither<&mut L::Target, &mut R::Target>
     where
         L: DerefMut,
         R: DerefMut,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l.deref_mut()),
+            Self::Left(l) => Xither::Left(l.deref_mut()),
             #[either]
-            Self::Right(r) => Quither::Right(r.deref_mut()),
+            Self::Right(r) => Xither::Right(r.deref_mut()),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l.deref_mut(), r.deref_mut()),
+            Self::Both(l, r) => Xither::Both(l.deref_mut(), r.deref_mut()),
         }
     }
 }

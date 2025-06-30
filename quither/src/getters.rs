@@ -17,7 +17,7 @@ use ::core::fmt::Debug;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Returns true if the value contains a left value.
     pub fn has_left(&self) -> bool {
         match self {
@@ -157,16 +157,16 @@ impl<L, R> Quither<L, R> {
     }
 
     /// Returns a new value with left and right swapped.
-    pub fn flip(self) -> Quither<R, L> {
+    pub fn flip(self) -> Xither<R, L> {
         match self {
             #[either]
-            Self::Left(l) => Quither::Right(l),
+            Self::Left(l) => Xither::Right(l),
             #[either]
-            Self::Right(r) => Quither::Left(r),
+            Self::Right(r) => Xither::Left(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(r, l),
+            Self::Both(l, r) => Xither::Both(r, l),
         }
     }
 

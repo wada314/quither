@@ -17,7 +17,7 @@ use ::replace_with::replace_with_or_abort;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Inserts a left value if not present and returns a mutable reference to it.
     ///
     /// If the left value is already present, returns it. If the current variant is `Right`, promotes

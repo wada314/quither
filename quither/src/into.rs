@@ -16,7 +16,7 @@ use super::*;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     #[quither(!has_neither)]
     /// Converts to the left value, consuming self.
     ///

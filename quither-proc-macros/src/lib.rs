@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::std::collections::HashSet;
-
 use ::proc_macro::TokenStream;
 use ::proc_macro2::TokenStream as TokenStream2;
 use ::quote::quote;
+use ::std::collections::HashSet;
 use ::syn::spanned::Spanned;
 use ::syn::visit::{Visit, visit_ident, visit_path, visit_path_arguments};
 use ::syn::visit_mut::{
@@ -30,6 +29,34 @@ use ::syn::{
     WherePredicate, parse, parse_macro_input,
 };
 
+/// A proc macro to generate code for `quither` crate.
+///
+/// **This macro is for internal use by the `quither` crate. Do not use it directly in your own projects.**
+///
+/// This macro can be used for an attribute macro for `Item`s, like an `impl` block.
+/// Without passing any arguments, this macro copies the annotated item 7 times, with:
+///  - Replacing the path segment `Xither` (without generic parameters) or `Xither<X, Y>` (with 2 generic parameters)
+///    with `Either`, `Neither`, `Both`, `EitherOrNeither`, `EitherOrBoth` or `NeitherOrBoth`.
+///    MAKE SURE TO NOT EXPOSE THE NAME `Xither` TO THE `quither` CRATE'S PUBLIC API OR DOCUMENTATION.
+///  - Replacing the path segment like `Xither<X, Y, e, n, b>`, where `e`, `n`, and `b` are boolean
+///    constants, with corresponding variant types like `Either<X, Y>`, `EitherOrBoth<X, Y>`, etc.
+///    `e`, `n`, and `b` indicate whether the corresponding variant type has `Either`, `Neither`,
+///    or `Both` enum variants.
+///  - Replacing the `has_either`, `has_neither`, and `has_both` expressions with the corresponding
+///    boolean constants (i.e. `true` or `false`), depend on the current copied item's state.
+///  - A syntax subtree inside this macro can also have `quither(...)` attribute to enable / disable
+///    that syntax subtree. The attribute accepts a boolean expression consist of:
+///    - `true` or `false` literals
+///    - `has_either`, `has_neither`, and `has_both` expressions
+///    - `&&` and `||` operators
+///    - `!` operator.
+///  - Attributes `#[either]` / `#[neither]` / `#[both]` works as a shortcut for `#[quither(has_either)]`,
+///    `#[quither(has_neither)]`, and `#[quither(has_both)]` respectively.
+///
+/// The outmost `#[quither]` attribute can take arguments as same as the inner one,
+/// which controls which variant types are generated. For example, if you specify
+/// `#[quither(has_either && !has_neither)]`, then the macro will generate `Either` and `EitherOrBoth`
+/// types only.
 #[proc_macro_attribute]
 pub fn quither(args: TokenStream, input: TokenStream) -> TokenStream {
     let args_expr_opt: Option<Expr> = (!args.is_empty()).then(|| parse(args).unwrap());
@@ -76,11 +103,11 @@ struct CodeProcessor {
 
 impl VisitMut for CodeProcessor {
     fn visit_path_mut(&mut self, node: &mut Path) {
-        // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
+        // Type `Xither<L, R>` or `Xither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
             self.replace_quither_path_segment(segment, |ident, new_part| {
-                ident.to_string().replace("Quither", new_part)
+                ident.to_string().replace("Xither", new_part)
             });
         }
         visit_path_mut(self, node);
@@ -151,7 +178,7 @@ impl CodeProcessor {
         F: FnOnce(&str, &str) -> String,
     {
         let ident_string = segment.ident.to_string();
-        if !ident_string.contains("Quither") {
+        if !ident_string.contains("Xither") {
             return;
         }
         let Some(bool_args) = self.implicit_345th_bool_arguments_for_path_segment(segment) else {
@@ -185,9 +212,9 @@ impl CodeProcessor {
         }
 
         let ident_str = ident.to_string();
-        if let Some(_) = ident_str.find("Quither") {
+        if let Some(_) = ident_str.find("Xither") {
             let new_ident_str = ident_str.replace(
-                "Quither",
+                "Xither",
                 Self::quither_name_gen((self.has_either, self.has_neither, self.has_both)),
             );
             *ident = Ident::new(&new_ident_str, ident.span());
@@ -469,15 +496,15 @@ fn test_visit_path_mut() {
     };
     let span = Span::call_site();
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R> };
     cp.visit_path_mut(&mut path);
     assert_eq!(path, parse_quote_spanned! { span => EitherOrBoth<L, R> });
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R, false, false, true> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R, false, false, true> };
     cp.visit_path_mut(&mut path);
     assert_eq!(path, parse_quote_spanned! { span => Both<L, R, > });
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R, has_both, has_both, has_neither> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R, has_both, has_both, has_neither> };
     cp.visit_path_mut(&mut path);
     assert_eq!(
         path,

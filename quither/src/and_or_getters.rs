@@ -16,7 +16,7 @@ use super::*;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Returns the left value, or the provided value if not present.
     ///
     /// If the left value is present, returns it. Otherwise, returns the provided value.
@@ -194,17 +194,17 @@ impl<L, R> Quither<L, R> {
     /// If the left value is present, applies the function and returns the result. Otherwise, returns
     /// the original value with the same variant.
     #[quither(has_either || has_both)]
-    pub fn left_and_then<F, L2>(self, f: F) -> Quither<L2, R>
+    pub fn left_and_then<F, L2>(self, f: F) -> Xither<L2, R>
     where
-        F: FnOnce(L) -> Quither<L2, R>,
+        F: FnOnce(L) -> Xither<L2, R>,
     {
         match self {
             #[either]
             Self::Left(l) => f(l),
             #[either]
-            Self::Right(r) => Quither::Right(r),
+            Self::Right(r) => Xither::Right(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
             Self::Both(l, _) => f(l),
         }
@@ -215,17 +215,17 @@ impl<L, R> Quither<L, R> {
     /// If the right value is present, applies the function and returns the result. Otherwise, returns
     /// the original value with the same variant.
     #[quither(has_either || has_both)]
-    pub fn right_and_then<F, R2>(self, f: F) -> Quither<L, R2>
+    pub fn right_and_then<F, R2>(self, f: F) -> Xither<L, R2>
     where
-        F: FnOnce(R) -> Quither<L, R2>,
+        F: FnOnce(R) -> Xither<L, R2>,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l),
+            Self::Left(l) => Xither::Left(l),
             #[either]
             Self::Right(r) => f(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
             Self::Both(_, r) => f(r),
         }
