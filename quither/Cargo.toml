@@ -1,6 +1,6 @@
 [package]
 name = "quither"
-version = "0.6.2"
+version = "0.7.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "A flexible enum-based utility for representing values that may be on the left, right, neither, or both sides."
@@ -15,7 +15,7 @@ all-features = true
 
 [dependencies]
 replace_with = "0.1.7"
-quither-proc-macros = { version = "0.1.0", path = "../quither-proc-macros" }
+quither-proc-macros = { version = "0.2.0", path = "../quither-proc-macros" }
 itertools = { version = "0.14.0", optional = true }
 
 [features]

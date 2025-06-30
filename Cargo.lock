@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "quither"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "itertools",
  "quither-proc-macros",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "quither-proc-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
