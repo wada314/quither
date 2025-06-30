@@ -1,3 +1,7 @@
+[![Crates.io Version](https://img.shields.io/crates/v/quither)](https://crates.io/crates/quither)
+[![docs.rs](https://img.shields.io/docsrs/quither)](https://docs.rs/quither/latest/quither/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/wada314/quither)
+
 # quither
 
 A flexible enum-based utility for representing values that may be on the left, right, neither, or both sides.
