@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! A file to implement standard traits for `Quither` types.
+//! A file to implement standard traits for `Xither` types.
 //!
 //! Note some of the `std` traits like `AsRef`, `AsMut` are in other file ([`as_ref.rs`]).
 
@@ -34,7 +34,7 @@ use ::std::io::{BufRead, Read, Result as IoResult, Seek, SeekFrom};
 /// `std::io::Read::chain`, which never retries the first reader after it returns 0 bytes.
 #[cfg(feature = "use_std")]
 #[quither]
-impl<L, R> Read for Quither<L, R>
+impl<L, R> Read for Xither<L, R>
 where
     L: Read,
     R: Read,
@@ -71,7 +71,7 @@ where
 /// `std::io::Read::chain` instead.
 #[cfg(feature = "use_std")]
 #[quither(!has_both)]
-impl<L, R> BufRead for Quither<L, R>
+impl<L, R> BufRead for Xither<L, R>
 where
     L: BufRead,
     R: BufRead,
@@ -106,7 +106,7 @@ where
 /// variant.
 #[cfg(feature = "use_std")]
 #[quither(!has_both)]
-impl<L, R> Seek for Quither<L, R>
+impl<L, R> Seek for Xither<L, R>
 where
     L: Seek,
     R: Seek,
@@ -164,7 +164,7 @@ where
 /// Requires both `L: Display` and `R: Display`. The output format reflects the variant and its
 /// inner value(s).
 #[quither]
-impl<L, R> Display for Quither<L, R>
+impl<L, R> Display for Xither<L, R>
 where
     L: Display,
     R: Display,
@@ -224,7 +224,7 @@ where
 /// that do not include the Neither or Both variants. If the type includes the Both variant, use the
 /// implementation that requires `T: Clone`, which extends both inner values with cloned items.
 #[quither(!has_neither && !has_both)]
-impl<L, R, T> Extend<T> for Quither<L, R>
+impl<L, R, T> Extend<T> for Xither<L, R>
 where
     L: Extend<T>,
     R: Extend<T>,
@@ -244,7 +244,7 @@ where
 /// Requires `L: Extend<T>`, `R: Extend<T>`, and `T: Clone`. For types that include the Both variant,
 /// both inner values are extended with cloned items from the iterator.
 #[quither(!has_neither && has_both)]
-impl<L, R, T> Extend<T> for Quither<L, R>
+impl<L, R, T> Extend<T> for Xither<L, R>
 where
     L: Extend<T>,
     R: Extend<T>,
@@ -295,21 +295,21 @@ where
 }
 
 #[quither]
-impl<L, R, OL, OR> PartialEq<Quither<OL, OR>> for Quither<L, R>
+impl<L, R, OL, OR> PartialEq<Xither<OL, OR>> for Xither<L, R>
 where
     L: PartialEq<OL>,
     R: PartialEq<OR>,
 {
-    fn eq(&self, other: &Quither<OL, OR>) -> bool {
+    fn eq(&self, other: &Xither<OL, OR>) -> bool {
         match (self, other) {
             #[either]
-            (Self::Left(l), Quither::Left(ol)) => l == ol,
+            (Self::Left(l), Xither::Left(ol)) => l == ol,
             #[either]
-            (Self::Right(r), Quither::Right(or)) => r == or,
+            (Self::Right(r), Xither::Right(or)) => r == or,
             #[neither]
-            (Self::Neither, Quither::Neither) => true,
+            (Self::Neither, Xither::Neither) => true,
             #[both]
-            (Self::Both(l, r), Quither::Both(ol, or)) => l == ol && r == or,
+            (Self::Both(l, r), Xither::Both(ol, or)) => l == ol && r == or,
             #[allow(unreachable_patterns)]
             _ => false,
         }
@@ -317,21 +317,21 @@ where
 }
 
 #[quither]
-impl<L, R, OL, OR> PartialOrd<Quither<OL, OR>> for Quither<L, R>
+impl<L, R, OL, OR> PartialOrd<Xither<OL, OR>> for Xither<L, R>
 where
     L: PartialOrd<OL>,
     R: PartialOrd<OR>,
 {
-    fn partial_cmp(&self, other: &Quither<OL, OR>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Xither<OL, OR>) -> Option<std::cmp::Ordering> {
         match (self, other) {
             #[either]
-            (Self::Left(l), Quither::Left(ol)) => l.partial_cmp(ol),
+            (Self::Left(l), Xither::Left(ol)) => l.partial_cmp(ol),
             #[either]
-            (Self::Right(r), Quither::Right(or)) => r.partial_cmp(or),
+            (Self::Right(r), Xither::Right(or)) => r.partial_cmp(or),
             #[neither]
-            (Self::Neither, Quither::Neither) => Some(std::cmp::Ordering::Equal),
+            (Self::Neither, Xither::Neither) => Some(std::cmp::Ordering::Equal),
             #[both]
-            (Self::Both(l, r), Quither::Both(ol, or)) => l
+            (Self::Both(l, r), Xither::Both(ol, or)) => l
                 .partial_cmp(ol)
                 .and_then(|o| r.partial_cmp(or).map(|o2| o.cmp(&o2))),
             // Non-equal variants patterns
@@ -340,19 +340,19 @@ where
             (Self::Neither, _) => Some(std::cmp::Ordering::Less),
             #[neither]
             #[allow(unreachable_patterns)]
-            (_, Quither::Neither) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Neither) => Some(std::cmp::Ordering::Greater),
             #[either]
             #[allow(unreachable_patterns)]
             (Self::Left(_), _) => Some(std::cmp::Ordering::Less),
             #[either]
             #[allow(unreachable_patterns)]
-            (_, Quither::Left(_)) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Left(_)) => Some(std::cmp::Ordering::Greater),
             #[either]
             #[allow(unreachable_patterns)]
             (Self::Right(_), _) => Some(std::cmp::Ordering::Less),
             #[either]
             #[allow(unreachable_patterns)]
-            (_, Quither::Right(_)) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Right(_)) => Some(std::cmp::Ordering::Greater),
         }
     }
 }

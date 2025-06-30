@@ -16,27 +16,27 @@ use super::*;
 use quither_proc_macros::quither;
 
 #[quither]
-impl<L, R> Quither<L, R> {
+impl<L, R> Xither<L, R> {
     /// Applies separate functions to each variant, transforming both sides.
     ///
     /// For types with `Either` or `Both` variants, applies `f` to the left value and `g` to the right
     /// value, returning a new pair type with the results. If `Both` is present, both functions are
     /// applied. If `Neither` is present, returns `Neither`.
     #[quither(has_either || has_both)]
-    pub fn map2<F, G, L2, R2>(self, f: F, g: G) -> Quither<L2, R2>
+    pub fn map2<F, G, L2, R2>(self, f: F, g: G) -> Xither<L2, R2>
     where
         F: FnOnce(L) -> L2,
         G: FnOnce(R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(l)),
+            Self::Left(l) => Xither::Left(f(l)),
             #[either]
-            Self::Right(r) => Quither::Right(g(r)),
+            Self::Right(r) => Xither::Right(g(r)),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(f(l), g(r)),
+            Self::Both(l, r) => Xither::Both(f(l), g(r)),
         }
     }
 
@@ -46,19 +46,19 @@ impl<L, R> Quither<L, R> {
     /// unchanged. If `Both` is present, only the left value is transformed. If `Neither` is present,
     /// returns `Neither`.
     #[quither(has_either || has_both)]
-    pub fn map_left<F, L2>(self, f: F) -> Quither<L2, R>
+    pub fn map_left<F, L2>(self, f: F) -> Xither<L2, R>
     where
         F: FnOnce(L) -> L2,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(l)),
+            Self::Left(l) => Xither::Left(f(l)),
             #[either]
-            Self::Right(r) => Quither::Right(r),
+            Self::Right(r) => Xither::Right(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(f(l), r),
+            Self::Both(l, r) => Xither::Both(f(l), r),
         }
     }
 
@@ -68,19 +68,19 @@ impl<L, R> Quither<L, R> {
     /// unchanged. If `Both` is present, only the right value is transformed. If `Neither` is present,
     /// returns `Neither`.
     #[quither(has_either || has_both)]
-    pub fn map_right<F, R2>(self, f: F) -> Quither<L, R2>
+    pub fn map_right<F, R2>(self, f: F) -> Xither<L, R2>
     where
         F: FnOnce(R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(l),
+            Self::Left(l) => Xither::Left(l),
             #[either]
-            Self::Right(r) => Quither::Right(f(r)),
+            Self::Right(r) => Xither::Right(f(r)),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l, f(r)),
+            Self::Both(l, r) => Xither::Both(l, f(r)),
         }
     }
 
@@ -90,20 +90,20 @@ impl<L, R> Quither<L, R> {
     /// The functors are applied in strictly `f` then `g` order, and if either functor returns an error,
     /// the following functors are not applied and the error is returned.
     #[quither(has_either || has_both)]
-    pub fn try_map2<F, G, L2, R2, E>(self, f: F, g: G) -> Result<Quither<L2, R2>, E>
+    pub fn try_map2<F, G, L2, R2, E>(self, f: F, g: G) -> Result<Xither<L2, R2>, E>
     where
         F: FnOnce(L) -> Result<L2, E>,
         G: FnOnce(R) -> Result<R2, E>,
     {
         Ok(match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(l)?),
+            Self::Left(l) => Xither::Left(f(l)?),
             #[either]
-            Self::Right(r) => Quither::Right(g(r)?),
+            Self::Right(r) => Xither::Right(g(r)?),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(f(l)?, g(r)?),
+            Self::Both(l, r) => Xither::Both(f(l)?, g(r)?),
         })
     }
 
@@ -113,19 +113,19 @@ impl<L, R> Quither<L, R> {
     /// The right value is unchanged. If `Both` is present, only the left value is transformed.
     /// If `Neither` is present, returns `Neither`.
     #[quither(has_either || has_both)]
-    pub fn try_map_left<F, L2, E>(self, f: F) -> Result<Quither<L2, R>, E>
+    pub fn try_map_left<F, L2, E>(self, f: F) -> Result<Xither<L2, R>, E>
     where
         F: FnOnce(L) -> Result<L2, E>,
     {
         Ok(match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(l)?),
+            Self::Left(l) => Xither::Left(f(l)?),
             #[either]
-            Self::Right(r) => Quither::Right(r),
+            Self::Right(r) => Xither::Right(r),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(f(l)?, r),
+            Self::Both(l, r) => Xither::Both(f(l)?, r),
         })
     }
 
@@ -135,19 +135,19 @@ impl<L, R> Quither<L, R> {
     /// The left value is unchanged. If `Both` is present, only the right value is transformed.
     /// If `Neither` is present, returns `Neither`.
     #[quither(has_either || has_both)]
-    pub fn try_map_right<F, R2, E>(self, f: F) -> Result<Quither<L, R2>, E>
+    pub fn try_map_right<F, R2, E>(self, f: F) -> Result<Xither<L, R2>, E>
     where
         F: FnOnce(R) -> Result<R2, E>,
     {
         Ok(match self {
             #[either]
-            Self::Left(l) => Quither::Left(l),
+            Self::Left(l) => Xither::Left(l),
             #[either]
-            Self::Right(r) => Quither::Right(f(r)?),
+            Self::Right(r) => Xither::Right(f(r)?),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(l, f(r)?),
+            Self::Both(l, r) => Xither::Both(l, f(r)?),
         })
     }
 
@@ -157,18 +157,18 @@ impl<L, R> Quither<L, R> {
     /// both with the provided context. Returns a new pair type with the results. If `Neither` is
     /// present, returns `Neither`.
     #[quither(has_either && !has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Xither<L2, R2>
     where
         F: FnOnce(Ctx, L) -> L2,
         G: FnOnce(Ctx, R) -> R2,
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(ctx, l)),
+            Self::Left(l) => Xither::Left(f(ctx, l)),
             #[either]
-            Self::Right(r) => Quither::Right(g(ctx, r)),
+            Self::Right(r) => Xither::Right(g(ctx, r)),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
         }
     }
 
@@ -178,7 +178,7 @@ impl<L, R> Quither<L, R> {
     /// both with a cloned context. If `Both` is present, both functions are applied with cloned
     /// contexts. If `Neither` is present, returns `Neither`.
     #[quither(has_either && has_both)]
-    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Quither<L2, R2>
+    pub fn map_with<Ctx, F, G, L2, R2>(self, ctx: Ctx, f: F, g: G) -> Xither<L2, R2>
     where
         Ctx: Clone,
         F: FnOnce(Ctx, L) -> L2,
@@ -186,19 +186,19 @@ impl<L, R> Quither<L, R> {
     {
         match self {
             #[either]
-            Self::Left(l) => Quither::Left(f(ctx, l)),
+            Self::Left(l) => Xither::Left(f(ctx, l)),
             #[either]
-            Self::Right(r) => Quither::Right(g(ctx, r)),
+            Self::Right(r) => Xither::Right(g(ctx, r)),
             #[neither]
-            Self::Neither => Quither::Neither,
+            Self::Neither => Xither::Neither,
             #[both]
-            Self::Both(l, r) => Quither::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
+            Self::Both(l, r) => Xither::Both(f(ctx.clone(), l), g(ctx.clone(), r)),
         }
     }
 }
 
 #[quither]
-impl<T> Quither<T, T> {
+impl<T> Xither<T, T> {
     /// Applies a function to both values, for types with identical left and right types, without `Both`.
     ///
     /// For types with `Either` but not `Both`, applies `f` to both values. If `Neither` is present,
@@ -206,17 +206,17 @@ impl<T> Quither<T, T> {
     /// If the type has `Both` variant, then this method has slightly stricter functor bounds
     /// (`FnOnce` -> `FnMut`).
     #[quither(has_either && !has_both)]
-    pub fn map<F, T2>(self, f: F) -> Quither<T2, T2>
+    pub fn map<F, T2>(self, f: F) -> Xither<T2, T2>
     where
         F: FnOnce(T) -> T2,
     {
         match self {
             #[either]
-            Quither::Left(l) => Quither::Left(f(l)),
+            Xither::Left(l) => Xither::Left(f(l)),
             #[either]
-            Quither::Right(r) => Quither::Right(f(r)),
+            Xither::Right(r) => Xither::Right(f(r)),
             #[neither]
-            Quither::Neither => Quither::Neither,
+            Xither::Neither => Xither::Neither,
         }
     }
 
@@ -224,19 +224,19 @@ impl<T> Quither<T, T> {
     ///
     /// For types with `Both` variant, applies `f` to the left value and the right value, in this order.
     #[quither(has_either && has_both)]
-    pub fn map<F, T2>(self, mut f: F) -> Quither<T2, T2>
+    pub fn map<F, T2>(self, mut f: F) -> Xither<T2, T2>
     where
         F: FnMut(T) -> T2,
     {
         match self {
             #[either]
-            Quither::Left(l) => Quither::Left(f(l)),
+            Xither::Left(l) => Xither::Left(f(l)),
             #[either]
-            Quither::Right(r) => Quither::Right(f(r)),
+            Xither::Right(r) => Xither::Right(f(r)),
             #[neither]
-            Quither::Neither => Quither::Neither,
+            Xither::Neither => Xither::Neither,
             #[both]
-            Quither::Both(l, r) => Quither::Both(f(l), f(r)),
+            Xither::Both(l, r) => Xither::Both(f(l), f(r)),
         }
     }
 
@@ -247,17 +247,17 @@ impl<T> Quither<T, T> {
     /// If the type has `Both` variant, then this method has slightly stricter functor bounds
     /// (`FnOnce` -> `FnMut`).
     #[quither(has_either && !has_both)]
-    pub fn try_map<F, T2, E>(self, f: F) -> Result<Quither<T2, T2>, E>
+    pub fn try_map<F, T2, E>(self, f: F) -> Result<Xither<T2, T2>, E>
     where
         F: FnOnce(T) -> Result<T2, E>,
     {
         Ok(match self {
             #[either]
-            Quither::Left(l) => Quither::Left(f(l)?),
+            Xither::Left(l) => Xither::Left(f(l)?),
             #[either]
-            Quither::Right(r) => Quither::Right(f(r)?),
+            Xither::Right(r) => Xither::Right(f(r)?),
             #[neither]
-            Quither::Neither => Quither::Neither,
+            Xither::Neither => Xither::Neither,
         })
     }
 
@@ -266,19 +266,19 @@ impl<T> Quither<T, T> {
     /// Applies `f` to both left and right existing values in this order, and if any of the
     /// functor calls return an error, then the error is returned.
     #[quither(has_either && has_both)]
-    pub fn try_map<F, T2, E>(self, mut f: F) -> Result<Quither<T2, T2>, E>
+    pub fn try_map<F, T2, E>(self, mut f: F) -> Result<Xither<T2, T2>, E>
     where
         F: FnMut(T) -> Result<T2, E>,
     {
         Ok(match self {
             #[either]
-            Quither::Left(l) => Quither::Left(f(l)?),
+            Xither::Left(l) => Xither::Left(f(l)?),
             #[either]
-            Quither::Right(r) => Quither::Right(f(r)?),
+            Xither::Right(r) => Xither::Right(f(r)?),
             #[neither]
-            Quither::Neither => Quither::Neither,
+            Xither::Neither => Xither::Neither,
             #[both]
-            Quither::Both(l, r) => Quither::Both(f(l)?, f(r)?),
+            Xither::Both(l, r) => Xither::Both(f(l)?, f(r)?),
         })
     }
 }

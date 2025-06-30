@@ -76,11 +76,11 @@ struct CodeProcessor {
 
 impl VisitMut for CodeProcessor {
     fn visit_path_mut(&mut self, node: &mut Path) {
-        // Type `Quither<L, R>` or `Quither<L, R, has_either, has_neither, has_both>` will be
+        // Type `Xither<L, R>` or `Xither<L, R, has_either, has_neither, has_both>` will be
         // replaced with something like `EitherOrBoth<L, R>` depend on the bool arguments.
         for segment in node.segments.iter_mut() {
             self.replace_quither_path_segment(segment, |ident, new_part| {
-                ident.to_string().replace("Quither", new_part)
+                ident.to_string().replace("Xither", new_part)
             });
         }
         visit_path_mut(self, node);
@@ -151,7 +151,7 @@ impl CodeProcessor {
         F: FnOnce(&str, &str) -> String,
     {
         let ident_string = segment.ident.to_string();
-        if !ident_string.contains("Quither") {
+        if !ident_string.contains("Xither") {
             return;
         }
         let Some(bool_args) = self.implicit_345th_bool_arguments_for_path_segment(segment) else {
@@ -185,9 +185,9 @@ impl CodeProcessor {
         }
 
         let ident_str = ident.to_string();
-        if let Some(_) = ident_str.find("Quither") {
+        if let Some(_) = ident_str.find("Xither") {
             let new_ident_str = ident_str.replace(
-                "Quither",
+                "Xither",
                 Self::quither_name_gen((self.has_either, self.has_neither, self.has_both)),
             );
             *ident = Ident::new(&new_ident_str, ident.span());
@@ -469,15 +469,15 @@ fn test_visit_path_mut() {
     };
     let span = Span::call_site();
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R> };
     cp.visit_path_mut(&mut path);
     assert_eq!(path, parse_quote_spanned! { span => EitherOrBoth<L, R> });
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R, false, false, true> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R, false, false, true> };
     cp.visit_path_mut(&mut path);
     assert_eq!(path, parse_quote_spanned! { span => Both<L, R, > });
 
-    let mut path = parse_quote_spanned! { span => Quither<L, R, has_both, has_both, has_neither> };
+    let mut path = parse_quote_spanned! { span => Xither<L, R, has_both, has_both, has_neither> };
     cp.visit_path_mut(&mut path);
     assert_eq!(
         path,
