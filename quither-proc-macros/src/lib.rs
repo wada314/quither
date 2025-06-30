@@ -37,6 +37,7 @@ use ::syn::{
 /// Without passing any arguments, this macro copies the annotated item 7 times, with:
 ///  - Replacing the path segment `Xither` (without generic parameters) or `Xither<X, Y>` (with 2 generic parameters)
 ///    with `Either`, `Neither`, `Both`, `EitherOrNeither`, `EitherOrBoth` or `NeitherOrBoth`.
+///    MAKE SURE TO NOT EXPOSE THE NAME `Xither` TO THE `quither` CRATE'S PUBLIC API OR DOCUMENTATION.
 ///  - Replacing the path segment like `Xither<X, Y, e, n, b>`, where `e`, `n`, and `b` are boolean
 ///    constants, with corresponding variant types like `Either<X, Y>`, `EitherOrBoth<X, Y>`, etc.
 ///    `e`, `n`, and `b` indicate whether the corresponding variant type has `Either`, `Neither`,
