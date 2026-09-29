@@ -30,6 +30,10 @@
 
 #![cfg_attr(not(feature = "use_std"), no_std)]
 
+// `Vec` used by unit tests lives in `alloc`, which is available without `use_std`.
+#[cfg(test)]
+extern crate alloc;
+
 mod and_or_getters;
 mod as_ref;
 mod conv;

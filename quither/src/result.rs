@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::Either;
-use ::std::iter::{Once, once};
+use ::core::iter::{Once, once};
 
 /// Extension trait for `Result` that provides methods for working with iterators.
 ///
@@ -136,6 +136,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use ::alloc::vec;
+    use ::alloc::vec::Vec;
+
     use super::*;
 
     #[test]
