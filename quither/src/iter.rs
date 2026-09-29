@@ -900,6 +900,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use ::alloc::vec;
+    use ::alloc::vec::Vec;
+
     use super::*;
 
     #[test]
