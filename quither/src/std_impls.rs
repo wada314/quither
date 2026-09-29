@@ -17,6 +17,7 @@
 //! Note some of the `std` traits like `AsRef`, `AsMut` are in other file ([`as_ref.rs`]).
 
 use super::*;
+use ::core::cmp::Ordering;
 use ::core::error::Error;
 use ::core::fmt::Display;
 use ::core::ops::{Deref, DerefMut};
@@ -322,14 +323,14 @@ where
     L: PartialOrd<OL>,
     R: PartialOrd<OR>,
 {
-    fn partial_cmp(&self, other: &Xither<OL, OR>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Xither<OL, OR>) -> Option<Ordering> {
         match (self, other) {
             #[either]
             (Self::Left(l), Xither::Left(ol)) => l.partial_cmp(ol),
             #[either]
             (Self::Right(r), Xither::Right(or)) => r.partial_cmp(or),
             #[neither]
-            (Self::Neither, Xither::Neither) => Some(std::cmp::Ordering::Equal),
+            (Self::Neither, Xither::Neither) => Some(Ordering::Equal),
             #[both]
             (Self::Both(l, r), Xither::Both(ol, or)) => l
                 .partial_cmp(ol)
@@ -337,22 +338,22 @@ where
             // Non-equal variants patterns
             #[neither]
             #[allow(unreachable_patterns)]
-            (Self::Neither, _) => Some(std::cmp::Ordering::Less),
+            (Self::Neither, _) => Some(Ordering::Less),
             #[neither]
             #[allow(unreachable_patterns)]
-            (_, Xither::Neither) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Neither) => Some(Ordering::Greater),
             #[either]
             #[allow(unreachable_patterns)]
-            (Self::Left(_), _) => Some(std::cmp::Ordering::Less),
+            (Self::Left(_), _) => Some(Ordering::Less),
             #[either]
             #[allow(unreachable_patterns)]
-            (_, Xither::Left(_)) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Left(_)) => Some(Ordering::Greater),
             #[either]
             #[allow(unreachable_patterns)]
-            (Self::Right(_), _) => Some(std::cmp::Ordering::Less),
+            (Self::Right(_), _) => Some(Ordering::Less),
             #[either]
             #[allow(unreachable_patterns)]
-            (_, Xither::Right(_)) => Some(std::cmp::Ordering::Greater),
+            (_, Xither::Right(_)) => Some(Ordering::Greater),
         }
     }
 }
