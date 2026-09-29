@@ -23,3 +23,5 @@ jobs:
         run: cargo check -p quither --no-default-features --target wasm32-unknown-unknown
       - name: Doc-test without default features
         run: cargo test -p quither --doc --no-default-features
+      - name: Test without default features
+        run: cargo test -p quither --no-default-features
